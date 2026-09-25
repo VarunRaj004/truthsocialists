@@ -1,0 +1,194 @@
+# Phased Implementation Roadmap
+
+## 1. Delivery strategy
+
+Build vertical security slices, not UI-first mock functionality. Each phase ends with executable tests and an explicit exit gate. Production pilots are prohibited until the external-review gate.
+
+The critical path is:
+
+```mermaid
+flowchart LR
+  P0[Protocol baseline] --> P1[Canonical encoding and crypto core]
+  P1 --> P2[Membership and recovery]
+  P1 --> P3[Matters and blind entitlement]
+  P2 --> P4[ZK circuits and proving]
+  P3 --> P4
+  P4 --> P5[Encrypted atomic submission]
+  P5 --> P6[Transparency and receipts]
+  P5 --> P7[Handler and mailbox]
+  P6 --> P8[Community voting and auditor]
+  P7 --> P8
+  P8 --> P9[Hardening and pilot]
+```
+
+## 2. Phase 0 - Repository and governance baseline
+
+Deliverables:
+
+- Accept this specification under version control.
+- Create a monorepo layout for mobile, web, services, circuits, shared schemas, infrastructure, and test vectors.
+- Add decision records for privacy boundary, proof statement, RSA suite, recovery, retention, and log finality.
+- Define code owners so circuit/crypto/schema changes require security review.
+- Configure secret scanning, signed commits/releases, dependency lockfiles, SBOM generation, and CI without production secrets.
+- Build a synthetic-data policy; real NICs and complaints are forbidden in developer environments.
+
+Exit gate: schemas and vector generator run in CI; no unresolved `TBD` changes a security statement or wire format.
+
+## 3. Phase 1 - Canonical encoding and cryptographic core
+
+Build first:
+
+- Strict deterministic-CBOR encoder/decoder in the shared supported languages.
+- Domain-separation and HashToField functions.
+- Ed25519 signing/verification and DER-SPKI key identifiers.
+- AES-256-GCM and HPKE envelope helpers with fixed suite identifiers.
+- Receipt, checkpoint, lease, log-leaf, and artifact-manifest libraries.
+- Cross-language conformance against `cyber-cipher-v1-vectors.json`.
+
+Do not implement custom RSA padding, Poseidon, Ed25519, AES, HPKE, or Groth16 primitives. Wrap reviewed libraries and add protocol-level validation.
+
+Exit gate: every language reproduces all positive vectors and rejects all negative vectors; fuzzers find no parser crash or ambiguous acceptance.
+
+## 4. Phase 2 - Identity, membership, and recovery vertical slice
+
+- Implement synthetic NIC registry adapter and identified enrollment flow.
+- Generate/store `personAnchor`, device hash, recovery public state, and encrypted user backup.
+- Implement depth-16 Poseidon tree with monotonic allocation and fixed empty leaves.
+- Publish 30-second signed checkpoints and deltas.
+- Implement five-minute recovery challenge and atomic old-leaf revocation/new-index allocation/recovery rotation.
+- Build a client path updater and checkpoint-chain verifier.
+
+Demo: enroll, produce current path, lose device, recover using seed, observe old leaf revoked and new leaf active after the next checkpoint.
+
+Exit gate: recovery concurrency tests prove that at most one replacement succeeds and no index is reused.
+
+## 5. Phase 3 - Matter registry and RSA blind entitlement
+
+- Implement matter UUID/version lifecycle and 24-hour prepublication rule.
+- Generate FIPS-compatible RSA-3072 keys with exponent 65537.
+- Encrypt prototype PKCS#8 files using secret-manager KEK; prevent repository/database inclusion.
+- Implement RFC 9474 randomized blind issuance and local final verification.
+- Enforce one issuance fact per enrollment/matter version.
+- Implement close/retire job and evidence of private-key destruction.
+
+Demo: issue a blind entitlement, show that the IdA database cannot recognize the unblinded token, and prove a second issuance for the same matter is rejected.
+
+Exit gate: official RFC/library test vectors pass; cross-protocol/key-reuse tests fail closed.
+
+## 6. Phase 4 - Circuits, setup, and mobile proving
+
+- Implement complaint and vote circuits with exact public-input order.
+- Unit-test every constraint and assert constraint counts.
+- Pin Circom/circomlib/build container.
+- Select and verify the Powers-of-Tau transcript.
+- Run three independent phase-two contributions per circuit and publish transcripts/hashes.
+- Produce R1CS, WASM/native prover assets, proving keys, verification keys, and deterministic artifact manifests.
+- Integrate a Rapidsnark-compatible prover on representative Android/iOS devices.
+
+Exit gate: invalid path, wrong `P`, wrong `D`, wrong `r`, changed matter/serial/commitment/challenge, and revoked leaf all fail. Proving performance and memory fit the supported device baseline.
+
+## 7. Phase 5 - Encrypted atomic complaint submission
+
+- Implement evidence allowlist, size limits, client sanitization, NFC normalization, manifest, and salted commitment.
+- Implement per-complaint AES-GCM and handler HPKE wrapping.
+- Implement 60-second proof-session lease service.
+- Build the verifier allowlist and fixed verification order.
+- Implement the serializable submission transaction and idempotency behavior.
+- Implement randomized deterministic-CBOR receipt generation and mobile verification.
+- Add direct TLS and test-only Tor routing; disable body/network-identifier logs.
+
+Exit gate: a successfully returned receipt always corresponds to one durable ciphertext and one durable log outbox entry; every failed transaction leaves serial/nullifier/challenge reusable.
+
+## 8. Phase 6 - Transparency log, witnesses, and public verifier
+
+- Implement RFC 6962-style leaf/node hashes, tree construction, inclusion and consistency proofs.
+- Sign tree heads and deploy three witness implementations/configurations.
+- Require 2-of-3 finality and implement tree-head gossip.
+- Build a downloadable public log and open-source offline verifier.
+- Implement mobile background inclusion verification and plain-language status.
+
+Demo: show valid receipt/inclusion, mutate a leaf, present divergent heads, and withhold a witness.
+
+Exit gate: mutation/fork proofs are rejected, one unavailable witness does not stop finality, and two unavailable/disagreeing witnesses produce a visible non-final state.
+
+## 9. Phase 7 - Handler workflow and anonymous mailbox
+
+- Add WebAuthn staff enrollment and least-privilege authorization.
+- Build case assignment, signed access events, state transitions, SLA timers, extensions, appeal, and suppression without deletion.
+- Integrate handler KMS/HPKE unwrap and sandboxed evidence viewing.
+- Implement signed DEK rewrap for cross-organization transfer.
+- Implement complaint-specific mailbox keys, signed challenges, HPKE messages, ordering hashes, and encrypted user recovery bundle.
+
+Exit gate: an unassigned handler cannot retrieve/decrypt a case; every allowed/denied access is attributable; transfer exposes only the DEK to authorized handler environments.
+
+## 10. Phase 8 - Redaction, community voting, and auditor comparison
+
+- Implement opt-in publication, automated PII scanning, handler draft, and independent reviewer approval.
+- Publish redacted derivative provenance and commitment.
+- Integrate vote circuit, current-root lease, unique vote nullifier, seven-day window, quorum 10, and 60% rule.
+- Implement comparison statuses and auditor freeze/escalation workflow.
+- Ensure community results never automatically close/delete a private complaint.
+
+Exit gate: no raw attachment/plaintext enters the public store; a user cannot vote twice for one complaint, including after device replacement preserving `P`.
+
+## 11. Phase 9 - Hardening and controlled pilot
+
+- Complete the full test plan, privacy data inventory, DPIA-style review, and accessibility/language testing.
+- Run backup/restore, key rotation, key compromise, witness outage, database failover, and recovery exercises.
+- Conduct SAST, dependency, container, IaC, DAST, fuzz, load, penetration, and external cryptographic reviews.
+- Resolve all critical/high findings; document accepted medium/low risks.
+- Name independent witness operators and handler key custodians.
+- Validate retention, appeals, moderation, and incident policies with legal/governance owners.
+
+Exit gate: formal production-readiness sign-off. Until then, use synthetic participants and content only.
+
+## 12. Suggested repository layout
+
+```text
+apps/
+  mobile/
+  handler-web/
+  reviewer-web/
+  community-web/
+  auditor-web/
+services/
+  ida/
+  membership/
+  recovery/
+  complaint-intake/
+  proof-verifier/
+  mailbox/
+  transparency-log/
+  witness/
+circuits/
+  complaint-membership/
+  community-vote/
+packages/
+  protocol-cbor/
+  crypto-profile/
+  test-vectors/
+infra/
+  compose/
+  production/
+docs/
+```
+
+## 13. First three implementation iterations
+
+### Iteration 1
+
+Repository, CDDL, vector CI, key-ID/signature helpers, log hash helpers, and database migrations.
+
+### Iteration 2
+
+Synthetic enrollment, membership tree/checkpoint/delta publication, client path reconstruction, and recovery transaction.
+
+### Iteration 3
+
+Matter publication, RSA blind issuance, initial complaint circuit, and end-to-end proof verification with synthetic ciphertext.
+
+Do not start public UI polishing before these iterations pass their security tests; wire-format or proof-statement changes after UI integration create expensive rework.
+
+## 14. Completion definition
+
+A feature is complete only when its protocol/schema is versioned, positive and negative tests exist, privacy-forbidden fields are tested, logs contain no sensitive values, failure is atomic, documentation matches behavior, and the acceptance matrix traces it to an SRS requirement.

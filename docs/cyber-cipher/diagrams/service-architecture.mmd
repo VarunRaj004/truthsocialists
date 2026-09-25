@@ -1,0 +1,58 @@
+flowchart TB
+  subgraph Client[User-controlled device]
+    App[Mobile app]
+    Vault[Hardware-backed vault]
+    Prover[Groth16 prover]
+  end
+  subgraph Identity[Identity trust zone]
+    IdAPI[Enrollment and blind issuance]
+    Recovery[Recovery]
+    Member[Depth-16 membership tree]
+    IdDB[(Identity DB)]
+    IdKeys[KMS/HSM]
+  end
+  subgraph Complaint[Complaint trust zone]
+    Ingress[Privacy ingress and Tor]
+    Verify[Proof verifier]
+    Intake[Atomic intake]
+    Mail[Mailbox router]
+    CDB[(Complaint DB)]
+    Obj[(Encrypted evidence)]
+    Outbox[Transparency outbox]
+  end
+  subgraph Handler[Handler organization]
+    Portal[Handler portal]
+    Safe[Safe evidence viewer]
+    HKeys[Organization KMS/HSM]
+    Reviewer[Privacy reviewer]
+  end
+  subgraph Audit[Public audit/community]
+    Log[Append-only Merkle log]
+    W1[Witness 1]
+    W2[Witness 2]
+    W3[Witness 3]
+    Community[Redacted portal and voting]
+    Auditor[Public auditor]
+  end
+  App -->|identified only| IdAPI
+  IdAPI --> IdDB
+  IdAPI --> IdKeys
+  Recovery --> IdDB
+  Member --> IdDB
+  Member -->|signed roots/deltas| App
+  App -->|anonymous proof and ciphertext| Ingress
+  Ingress --> Verify --> Intake
+  Intake --> CDB
+  Intake --> Obj
+  Intake --> Outbox --> Log
+  Portal --> CDB
+  Portal --> Obj
+  Portal --> HKeys
+  Portal --> Safe
+  Portal --> Reviewer --> Community
+  Log --> W1
+  Log --> W2
+  Log --> W3
+  Log --> Auditor
+  Community --> Auditor
+  App -->|anonymous vote proof| Community

@@ -1,0 +1,368 @@
+openapi: 3.1.0
+info:
+  title: Cyber Cipher Protocol APIs
+  version: 1.0.0
+  description: >-
+    Boundary-level contract. Binary cryptographic objects are deterministic CBOR;
+    JSON examples are diagnostic and are never signed.
+servers:
+  - url: https://api.example.invalid
+paths:
+  /ida/v1/enrollments:
+    post:
+      operationId: createEnrollment
+      description: Identified, authenticated enrollment; never accepts complaint data.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+        '400': {$ref: '#/components/responses/GenericFailure'}
+  /ida/v1/matters/{matterId}/{matterVersion}/blind-issuance:
+    post:
+      operationId: issueBlindEntitlement
+      parameters:
+        - {name: matterId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: matterVersion, in: path, required: true, schema: {type: integer, minimum: 1}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+        '400': {$ref: '#/components/responses/GenericFailure'}
+  /ida/v1/recovery/challenges:
+    post:
+      operationId: createRecoveryChallenge
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+        '429': {$ref: '#/components/responses/GenericFailure'}
+  /ida/v1/recovery/complete:
+    post:
+      operationId: completeRecovery
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+        '400': {$ref: '#/components/responses/GenericFailure'}
+  /public/v1/matters:
+    get:
+      operationId: listMatters
+      responses:
+        '200':
+          description: Published matter versions and cryptographic metadata.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Matter'}
+  /public/v1/membership/checkpoints/current:
+    get:
+      operationId: getCurrentMembershipCheckpoint
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /public/v1/membership/deltas:
+    get:
+      operationId: getMembershipDeltas
+      parameters:
+        - name: afterEpoch
+          in: query
+          required: true
+          schema: {type: integer, minimum: 0}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /complaints/v1/proof-sessions:
+    post:
+      operationId: createComplaintProofSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose]
+              properties:
+                purpose: {type: string, const: complaint}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+        '429': {$ref: '#/components/responses/GenericFailure'}
+  /complaints/v1/complaints:
+    post:
+      operationId: submitComplaint
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+        '400': {$ref: '#/components/responses/GenericFailure'}
+        '409': {$ref: '#/components/responses/IdempotencyConflict'}
+  /public/v1/receipts/{receiptId}/inclusion:
+    get:
+      operationId: getReceiptInclusion
+      parameters:
+        - name: receiptId
+          in: path
+          required: true
+          schema: {$ref: '#/components/schemas/Base64Url16'}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+        '404': {$ref: '#/components/responses/GenericFailure'}
+  /mailboxes/v1/{mailboxId}/challenges:
+    post:
+      operationId: createMailboxChallenge
+      parameters:
+        - {name: mailboxId, in: path, required: true, schema: {$ref: '#/components/schemas/Base64Url16'}}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+        '429': {$ref: '#/components/responses/GenericFailure'}
+  /mailboxes/v1/{mailboxId}/messages:
+    get:
+      operationId: getMailboxMessages
+      parameters:
+        - {name: mailboxId, in: path, required: true, schema: {$ref: '#/components/schemas/Base64Url16'}}
+        - {name: Mailbox-Challenge, in: header, required: true, schema: {type: string, contentEncoding: base64}}
+        - {name: Mailbox-Signature, in: header, required: true, schema: {type: string, contentEncoding: base64}}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+        '400': {$ref: '#/components/responses/GenericFailure'}
+    post:
+      operationId: sendMailboxMessage
+      parameters:
+        - {name: mailboxId, in: path, required: true, schema: {$ref: '#/components/schemas/Base64Url16'}}
+        - {name: Mailbox-Challenge, in: header, required: true, schema: {type: string, contentEncoding: base64}}
+        - {name: Mailbox-Signature, in: header, required: true, schema: {type: string, contentEncoding: base64}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {description: Encrypted message accepted.}
+        '400': {$ref: '#/components/responses/GenericFailure'}
+  /handler/v1/cases:
+    get:
+      operationId: listAssignedCases
+      security: [{webAuthnSession: []}]
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /handler/v1/cases/{complaintId}:
+    get:
+      operationId: getAssignedCase
+      security: [{webAuthnSession: []}]
+      parameters:
+        - $ref: '#/components/parameters/ComplaintId'
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+        '403': {$ref: '#/components/responses/GenericFailure'}
+  /handler/v1/cases/{complaintId}/events:
+    post:
+      operationId: createCaseEvent
+      security: [{webAuthnSession: []}]
+      parameters:
+        - $ref: '#/components/parameters/ComplaintId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+  /handler/v1/cases/{complaintId}/transfer:
+    post:
+      operationId: transferCase
+      security: [{webAuthnSession: []}]
+      parameters:
+        - $ref: '#/components/parameters/ComplaintId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /handler/v1/cases/{complaintId}/redactions:
+    post:
+      operationId: proposeRedaction
+      security: [{webAuthnSession: []}]
+      parameters:
+        - $ref: '#/components/parameters/ComplaintId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+  /review/v1/redactions/{redactionId}/decision:
+    post:
+      operationId: decideRedaction
+      security: [{webAuthnSession: []}]
+      parameters:
+        - {name: redactionId, in: path, required: true, schema: {type: string, format: uuid}}
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /community/v1/proof-sessions:
+    post:
+      operationId: createVoteProofSession
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+  /community/v1/complaints/{complaintId}/votes:
+    post:
+      operationId: castVote
+      parameters:
+        - $ref: '#/components/parameters/ComplaintId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {description: Vote accepted. No member identifier is returned.}
+        '400': {$ref: '#/components/responses/GenericFailure'}
+  /public/v1/complaints/{complaintId}:
+    get:
+      operationId: getPublicComplaint
+      parameters:
+        - $ref: '#/components/parameters/ComplaintId'
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+        '404': {$ref: '#/components/responses/GenericFailure'}
+  /public/v1/complaints/{complaintId}/vote-result:
+    get:
+      operationId: getVoteResult
+      parameters:
+        - $ref: '#/components/parameters/ComplaintId'
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /auditor/v1/complaints/{complaintId}/assessment:
+    post:
+      operationId: createAuditorAssessment
+      security: [{webAuthnSession: []}]
+      parameters:
+        - $ref: '#/components/parameters/ComplaintId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: {type: string, contentEncoding: base64}
+      responses:
+        '201': {$ref: '#/components/responses/CborObject'}
+  /log/v1/entries:
+    get:
+      operationId: listLogEntries
+      parameters:
+        - {name: start, in: query, required: false, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 10000, default: 1000}}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /log/v1/tree-heads/latest:
+    get:
+      operationId: getLatestTreeHead
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /log/v1/proofs/inclusion:
+    get:
+      operationId: getInclusionProof
+      parameters:
+        - {name: leafIndex, in: query, required: true, schema: {type: integer, minimum: 0}}
+        - {name: treeSize, in: query, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+  /log/v1/proofs/consistency:
+    get:
+      operationId: getConsistencyProof
+      parameters:
+        - {name: firstSize, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: secondSize, in: query, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        '200': {$ref: '#/components/responses/CborObject'}
+components:
+  securitySchemes:
+    webAuthnSession:
+      type: http
+      scheme: bearer
+      bearerFormat: short-lived session established by WebAuthn
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+    ComplaintId:
+      name: complaintId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  schemas:
+    Base64Url16:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{22}$'
+    Matter:
+      type: object
+      additionalProperties: false
+      required: [matterId, version, opensAt, closesAt, matterKeyId, rsaSpkiDer, complaintArtifactId, voteArtifactId]
+      properties:
+        matterId: {type: string, format: uuid}
+        version: {type: integer, minimum: 1, maximum: 4294967295}
+        title: {type: string, maxLength: 300}
+        opensAt: {type: string, format: date-time}
+        closesAt: {type: string, format: date-time}
+        matterKeyId: {type: string, pattern: '^[A-Za-z0-9_-]{43}$'}
+        rsaSpkiDer: {type: string, contentEncoding: base64}
+        complaintArtifactId: {type: string, pattern: '^[A-Za-z0-9_-]{43}$'}
+        voteArtifactId: {type: string, pattern: '^[A-Za-z0-9_-]{43}$'}
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, requestId]
+      properties:
+        code: {type: string, enum: [SUBMISSION_NOT_ACCEPTED, RATE_LIMITED, NOT_FOUND, IDEMPOTENCY_CONFLICT]}
+        requestId: {type: string, format: uuid}
+  responses:
+    CborObject:
+      description: Canonical Cyber Cipher CBOR object.
+      content:
+        application/cbor:
+          schema: {type: string, contentEncoding: base64}
+    GenericFailure:
+      description: Privacy-preserving uniform failure.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    IdempotencyConflict:
+      description: Idempotency key was reused with different request bytes.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}

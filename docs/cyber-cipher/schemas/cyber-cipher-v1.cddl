@@ -1,0 +1,169 @@
+; Cyber Cipher protocol v1 - RFC 8949 deterministic CBOR profile.
+
+bstr16 = bytes .size 16
+bstr32 = bytes .size 32
+bstr48 = bytes .size 48
+bstr64 = bytes .size 64
+field32 = bytes .size 32 ; decoder additionally requires OS2IP(value) < BN254 q
+uuid = bstr16
+uint32 = 0..4294967295
+uint64 = 0..18446744073709551615
+
+matter-ref = [uuid, uint32]
+
+entitlement-message = {
+  1: 1,
+  2: bstr32, ; matterKeyId
+  3: bstr16, ; serial
+  4: field32 ; personCommitment
+}
+
+entitlement-token = {
+  1: entitlement-message,
+  2: bstr32, ; RFC 9474 randomized preparation prefix
+  3: bytes .size 384 ; RSA-3072 signature
+}
+
+membership-checkpoint-body = {
+  1: 1,
+  2: uint64, ; epoch
+  3: field32, ; root
+  4: bstr32, ; previousCheckpointHash
+  5: uint64, ; publishedAt milliseconds
+  6: bstr32, ; updateBatchHash
+  7: bstr32 ; signingKeyId
+}
+
+membership-checkpoint = {
+  1: membership-checkpoint-body,
+  2: bstr64
+}
+
+proof-lease-body = {
+  1: 1,
+  2: bstr16, ; challengeId
+  3: 1..2, ; purpose: complaint or vote
+  4: uint64, ; epoch
+  5: field32, ; root
+  6: uint64, ; issuedAt milliseconds
+  7: uint64, ; expiresAt milliseconds
+  8: bstr32, ; serverNonce
+  9: bstr32 ; signingKeyId
+}
+
+proof-lease = {
+  1: proof-lease-body,
+  2: bstr64
+}
+
+proof-envelope = {
+  1: 1..2, ; scheme registry: 1 Groth16-BN254, 2 future RSA accumulator
+  2: uint32, ; circuitVersion
+  3: bstr32, ; artifactId
+  4: bytes, ; scheme-defined proof bytes
+  5: [+ field32] ; ordered public signals
+}
+
+attachment-record = {
+  1: uint32, ; zero-based index
+  2: uint64, ; size
+  3: tstr, ; allowlisted MIME type, NFC
+  4: tstr, ; sanitized filename, NFC
+  5: bstr32 ; hash of final sanitized bytes
+}
+
+complaint-manifest = {
+  1: 1,
+  2: uuid,
+  3: uint32,
+  4: tstr,
+  5: [* attachment-record]
+}
+
+private-complaint-package = {
+  1: 1,
+  2: complaint-manifest,
+  3: bstr32, ; commitment salt
+  4: [* original-evidence-record],
+  5: bstr16, ; mailboxId
+  6: bstr32, ; mailbox Ed25519 public key
+  7: bstr32 ; mailbox X25519 public key
+}
+
+original-evidence-record = {
+  1: uint32,
+  2: uint64,
+  3: tstr,
+  4: bstr32,
+  5: bytes ; encrypted/original bytes exist only inside outer encrypted package
+}
+
+receipt-body = {
+  1: 1,
+  2: bstr16,
+  3: bstr32,
+  4: uuid,
+  5: uuid,
+  6: uint32,
+  7: bstr32,
+  8: uint64,
+  9: bstr32,
+  10: bstr32
+}
+
+receipt = {
+  1: receipt-body,
+  2: bstr64
+}
+
+log-entry = {
+  1: 1,
+  2: bstr16,
+  3: uint32,
+  ? 4: uuid,
+  ? 5: uuid,
+  ? 6: uint32,
+  7: bstr32,
+  8: uint64,
+  9: uint32,
+  ? 10: uint32
+}
+
+tree-head-body = {
+  1: 1,
+  2: uint64, ; treeSize
+  3: bstr32, ; rootHash
+  4: uint64, ; timestamp milliseconds
+  5: bstr32, ; previous finalized STH hash
+  6: bstr32 ; logKeyId
+}
+
+tree-head = {
+  1: tree-head-body,
+  2: bstr64, ; log signature
+  3: [+ witness-signature]
+}
+
+witness-signature = {
+  1: bstr32, ; witnessKeyId
+  2: bstr64
+}
+
+artifact-manifest = {
+  1: 1,
+  2: tstr, ; circuitName
+  3: uint32, ; circuitVersion
+  4: uint32, ; treeDepth
+  5: tstr, ; proofSystem
+  6: tstr, ; curve
+  7: tstr, ; compiler version
+  8: { * tstr => tstr }, ; dependency versions
+  9: bstr32, ; source bundle hash
+  10: bstr32, ; R1CS hash
+  11: bstr32, ; WASM/prover hash
+  12: bstr32, ; proving key hash
+  13: bstr32, ; verification key hash
+  14: bstr32, ; Powers-of-Tau hash
+  15: bstr32, ; phase-two transcript hash
+  16: uint64 ; createdAt milliseconds
+}

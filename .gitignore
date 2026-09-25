@@ -1,0 +1,42 @@
+# Dependencies and build outputs
+node_modules/
+.dart_tool/
+.gradle/
+dist/
+build/
+coverage/
+__pycache__/
+*.py[cod]
+
+# Local environments and caches
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+tmp/
+
+# Secrets and private keys - public DER/SPKI artifacts may be added explicitly
+secrets/
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.pk8
+
+# Circuit ceremony toxic/intermediate material
+*.ptau.tmp
+*.zkey.tmp
+pot*.ptau
+phase2-intermediate/
+
+# Runtime databases and local object stores
+*.db
+*.sqlite
+postgres-data/
+object-store-data/
