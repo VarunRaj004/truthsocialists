@@ -1,0 +1,19 @@
+{
+  "name": "truthsocialists",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cyber Cipher anonymous complaint platform",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "check": "pnpm -r check"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2"
+  }
+}

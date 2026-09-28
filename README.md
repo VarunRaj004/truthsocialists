@@ -11,6 +11,7 @@ This repository currently contains the version 1 design baseline and implementat
 - [Cryptographic protocol](docs/cyber-cipher/03_CRYPTOGRAPHIC_PROTOCOL.md)
 - [Implementation roadmap](docs/cyber-cipher/07_IMPLEMENTATION_ROADMAP.md)
 - [Security acceptance plan](docs/cyber-cipher/08_SECURITY_AND_ACCEPTANCE_TEST_PLAN.md)
+- [Deliverable 4: comparative verifiability report](docs/cyber-cipher/DELIVERABLE_4_VERIFIABILITY_REPORT.md)
 - [Consolidated PDF](deliverables/Cyber_Cipher_Design_Baseline_v1.pdf)
 - [Downloadable specification ZIP](deliverables/Cyber_Cipher_Specification_Package_v1.zip)
 
@@ -35,6 +36,17 @@ The prototype uses Semaphore-style Merkle membership. A custom zero-knowledge RS
 
 ## Current status
 
-Design baseline complete. Implementation should begin with Phase 0 and Phase 1 in the roadmap: repository governance, deterministic encoding, cross-language test-vector conformance, and shared cryptographic protocol helpers.
+Design baseline complete. Phase 0 and the first Phase 1 protocol slice are now in development.
+
+Implemented so far:
+
+- pnpm/TypeScript monorepo foundation and protocol-conformance CI;
+- strict deterministic-CBOR encoder/decoder;
+- SHA-256 framing, BN254 scalar validation, hash-to-field and domain constants;
+- canonical protocol-object builders;
+- Ed25519 signature/key-ID verification;
+- conformance tests against the published reference vectors.
+
+See [`packages/protocol-core`](packages/protocol-core/README.md) for the executable code and boundaries.
 
 This is not production-ready software. Real deployment requires external cryptographic, penetration, privacy, accessibility, legal, and operational reviews.
