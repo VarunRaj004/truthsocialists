@@ -5,6 +5,7 @@ import {
   BN254_SCALAR_MODULUS,
   POSEIDON_DOMAIN_LABELS,
   assertExactIntegerKeys,
+  artifactManifest,
   attachmentRecord,
   bytesToHex,
   complaintManifest,
@@ -16,8 +17,8 @@ import {
   frame,
   hashToField,
   hexToBytes,
-  integerMap,
   keyIdFromSpkiDer,
+  logLeafHash,
   logEntry,
   membershipCheckpointBody,
   poseidonDomain,
@@ -26,6 +27,8 @@ import {
   signedObject,
   signingInput,
   verifyEd25519Raw,
+  verifyMembershipCheckpoint,
+  verifyReceipt,
   type CborValue,
 } from "../src/index.js";
 
@@ -106,7 +109,7 @@ test("log leaf uses RFC 6962-style leaf domain separation", () => {
   });
   const encoded = encodeCanonical(entry);
   expectHex(encoded, vectors.logEntry.cborHex!);
-  expectHex(sha256(Uint8Array.of(0), encoded), vectors.logEntry.leafHashHex!);
+  expectHex(logLeafHash(encoded), vectors.logEntry.leafHashHex!);
 });
 
 test("receipt bytes, signing input, key identifier, and Ed25519 signature verify", () => {
@@ -137,10 +140,15 @@ test("receipt bytes, signing input, key identifier, and Ed25519 signature verify
     keyIdFromSpkiDer(ed25519SpkiFromRaw(hexToBytes(vectors.receipt.publicKeyRawHex!))),
     vectors.receipt.receiptKeyIdHex!,
   );
-  expectHex(
-    encodeCanonical(signedObject(body, hexToBytes(vectors.receipt.signatureHex!))),
-    vectors.receipt.signedReceiptCborHex!,
-  );
+  const signed = encodeCanonical(signedObject(body, hexToBytes(vectors.receipt.signatureHex!)));
+  expectHex(signed, vectors.receipt.signedReceiptCborHex!);
+  const verified = verifyReceipt(signed, hexToBytes(vectors.receipt.publicKeyRawHex!), {
+    complaintId: hexToBytes("123e4567e89b42d3a456426614174000"),
+    matterId: hexToBytes("00112233445546778899aabbccddeeff"),
+    matterVersion: 1n,
+    complaintCommitment: hexToBytes(vectors.complaintManifest.complaintCommitmentHex!),
+  });
+  assert.equal(verified.acceptedAt, 1790294400123n);
 });
 
 test("membership checkpoint bytes and signature reproduce the vector", () => {
@@ -169,6 +177,12 @@ test("membership checkpoint bytes and signature reproduce the vector", () => {
   );
   expectHex(signed, vectors.membershipCheckpoint.signedCheckpointCborHex!);
   expectHex(sha256(signed), vectors.membershipCheckpoint.checkpointHashHex!);
+  const verified = verifyMembershipCheckpoint(
+    signed,
+    hexToBytes(vectors.membershipCheckpoint.publicKeyRawHex!),
+    { previousCheckpointHash: new Uint8Array(32), minimumEpoch: 42n },
+  );
+  assert.equal(verified.epoch, 42n);
 });
 
 test("length-framed hash-to-field inputs and Poseidon domains match", () => {
@@ -206,24 +220,23 @@ test("length-framed hash-to-field inputs and Poseidon domains match", () => {
 
 test("artifact manifest is deterministically content addressed", () => {
   const dependencies = new Map<string, CborValue>([["circomlib", "pinned-test-version"]]);
-  const manifest = integerMap([
-    [1, 1],
-    [2, "complaint-membership"],
-    [3, 1],
-    [4, 16],
-    [5, "groth16"],
-    [6, "bn254"],
-    [7, "circom-2.x-pinned-by-build"],
-    [8, dependencies],
-    [9, sha256(new TextEncoder().encode("source bundle"))],
-    [10, sha256(new TextEncoder().encode("r1cs"))],
-    [11, sha256(new TextEncoder().encode("wasm"))],
-    [12, sha256(new TextEncoder().encode("proving key"))],
-    [13, sha256(new TextEncoder().encode("verification key"))],
-    [14, sha256(new TextEncoder().encode("powers of tau"))],
-    [15, sha256(new TextEncoder().encode("phase two transcript"))],
-    [16, 1790294400000n],
-  ]);
+  const manifest = artifactManifest({
+    circuitName: "complaint-membership",
+    circuitVersion: 1n,
+    treeDepth: 16n,
+    proofSystem: "groth16",
+    curve: "bn254",
+    compiler: "circom-2.x-pinned-by-build",
+    dependencies,
+    sourceHash: sha256(new TextEncoder().encode("source bundle")),
+    r1csHash: sha256(new TextEncoder().encode("r1cs")),
+    wasmHash: sha256(new TextEncoder().encode("wasm")),
+    provingKeyHash: sha256(new TextEncoder().encode("proving key")),
+    verificationKeyHash: sha256(new TextEncoder().encode("verification key")),
+    powersOfTauHash: sha256(new TextEncoder().encode("powers of tau")),
+    phaseTwoTranscriptHash: sha256(new TextEncoder().encode("phase two transcript")),
+    builtAt: 1790294400000n,
+  });
   const encoded = encodeCanonical(manifest);
   expectHex(encoded, vectors.artifactManifest.cborHex!);
   expectHex(sha256(encoded), vectors.artifactManifest.artifactIdHex!);

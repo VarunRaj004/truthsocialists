@@ -145,6 +145,130 @@ export interface MembershipCheckpointBodyInput {
   signingKeyId: Uint8Array;
 }
 
+export const ProofLeasePurpose = {
+  Complaint: 1n,
+  Vote: 2n,
+} as const;
+
+export type ProofLeasePurposeValue =
+  (typeof ProofLeasePurpose)[keyof typeof ProofLeasePurpose];
+
+export interface ProofLeaseBodyInput {
+  challengeId: Uint8Array;
+  purpose: ProofLeasePurposeValue;
+  epoch: bigint;
+  membershipRoot: Uint8Array;
+  issuedAt: bigint;
+  expiresAt: bigint;
+  serverNonce: Uint8Array;
+  signingKeyId: Uint8Array;
+}
+
+export function proofLeaseBody(input: ProofLeaseBodyInput): Map<CborKey, CborValue> {
+  if (input.purpose !== ProofLeasePurpose.Complaint && input.purpose !== ProofLeasePurpose.Vote) {
+    throw new RangeError("proof lease purpose must be complaint or vote");
+  }
+  decodeFieldElement(input.membershipRoot);
+  assertUint("issuedAt", input.issuedAt, UINT64_MAX);
+  assertUint("expiresAt", input.expiresAt, UINT64_MAX);
+  if (input.expiresAt < input.issuedAt) {
+    throw new RangeError("proof lease expiry must not precede its issue time");
+  }
+  if (input.expiresAt - input.issuedAt > 60_000n) {
+    throw new RangeError("proof lease lifetime must not exceed 60 seconds");
+  }
+  return integerMap([
+    [1, PROTOCOL_VERSION],
+    [2, assertBytesLength("challengeId", input.challengeId, 16)],
+    [3, input.purpose],
+    [4, assertUint("epoch", input.epoch, UINT64_MAX)],
+    [5, input.membershipRoot],
+    [6, input.issuedAt],
+    [7, input.expiresAt],
+    [8, assertBytesLength("serverNonce", input.serverNonce, 32)],
+    [9, assertBytesLength("signingKeyId", input.signingKeyId, 32)],
+  ]);
+}
+
+export interface ComplaintEncryptionAadInput {
+  complaintId: Uint8Array;
+  matterId: Uint8Array;
+  matterVersion: bigint;
+  complaintCommitment: Uint8Array;
+  handlerKeyId: Uint8Array;
+}
+
+export function complaintEncryptionAad(
+  input: ComplaintEncryptionAadInput,
+): Map<CborKey, CborValue> {
+  return integerMap([
+    [1, PROTOCOL_VERSION],
+    [2, assertBytesLength("complaintId", input.complaintId, 16)],
+    [3, assertBytesLength("matterId", input.matterId, 16)],
+    [4, assertUint("matterVersion", input.matterVersion, UINT32_MAX)],
+    [5, assertBytesLength("complaintCommitment", input.complaintCommitment, 32)],
+    [6, assertBytesLength("handlerKeyId", input.handlerKeyId, 32)],
+  ]);
+}
+
+export interface HandlerDekAadInput {
+  complaintId: Uint8Array;
+  complaintCommitment: Uint8Array;
+  handlerKeyId: Uint8Array;
+}
+
+export function handlerDekAad(input: HandlerDekAadInput): Map<CborKey, CborValue> {
+  return integerMap([
+    [1, PROTOCOL_VERSION],
+    [2, assertBytesLength("complaintId", input.complaintId, 16)],
+    [3, assertBytesLength("complaintCommitment", input.complaintCommitment, 32)],
+    [4, assertBytesLength("handlerKeyId", input.handlerKeyId, 32)],
+  ]);
+}
+
+export interface ArtifactManifestInput {
+  circuitName: string;
+  circuitVersion: bigint;
+  treeDepth: bigint;
+  proofSystem: string;
+  curve: string;
+  compiler: string;
+  dependencies: ReadonlyMap<string, CborValue>;
+  sourceHash: Uint8Array;
+  r1csHash: Uint8Array;
+  wasmHash: Uint8Array;
+  provingKeyHash: Uint8Array;
+  verificationKeyHash: Uint8Array;
+  powersOfTauHash: Uint8Array;
+  phaseTwoTranscriptHash: Uint8Array;
+  builtAt: bigint;
+}
+
+export function artifactManifest(input: ArtifactManifestInput): Map<CborKey, CborValue> {
+  assertNfc("circuitName", input.circuitName);
+  assertNfc("proofSystem", input.proofSystem);
+  assertNfc("curve", input.curve);
+  assertNfc("compiler", input.compiler);
+  return integerMap([
+    [1, PROTOCOL_VERSION],
+    [2, input.circuitName],
+    [3, assertUint("circuitVersion", input.circuitVersion, UINT32_MAX)],
+    [4, assertUint("treeDepth", input.treeDepth, UINT32_MAX)],
+    [5, input.proofSystem],
+    [6, input.curve],
+    [7, input.compiler],
+    [8, input.dependencies],
+    [9, assertBytesLength("sourceHash", input.sourceHash, 32)],
+    [10, assertBytesLength("r1csHash", input.r1csHash, 32)],
+    [11, assertBytesLength("wasmHash", input.wasmHash, 32)],
+    [12, assertBytesLength("provingKeyHash", input.provingKeyHash, 32)],
+    [13, assertBytesLength("verificationKeyHash", input.verificationKeyHash, 32)],
+    [14, assertBytesLength("powersOfTauHash", input.powersOfTauHash, 32)],
+    [15, assertBytesLength("phaseTwoTranscriptHash", input.phaseTwoTranscriptHash, 32)],
+    [16, assertUint("builtAt", input.builtAt, UINT64_MAX)],
+  ]);
+}
+
 export function membershipCheckpointBody(
   input: MembershipCheckpointBodyInput,
 ): Map<CborKey, CborValue> {

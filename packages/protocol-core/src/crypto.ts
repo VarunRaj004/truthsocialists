@@ -24,6 +24,16 @@ export function sha256(...parts: readonly Uint8Array[]): Uint8Array {
   return new Uint8Array(hash.digest());
 }
 
+export function logLeafHash(canonicalLogEntry: Uint8Array): Uint8Array {
+  return sha256(Uint8Array.of(0), canonicalLogEntry);
+}
+
+export function logNodeHash(left: Uint8Array, right: Uint8Array): Uint8Array {
+  assertBytesLength("left log-node hash", left, 32);
+  assertBytesLength("right log-node hash", right, 32);
+  return sha256(Uint8Array.of(1), left, right);
+}
+
 export function frame(label: string, ...parts: readonly Uint8Array[]): Uint8Array {
   assertLabel(label);
   const framed: Uint8Array[] = [utf8(`${PROTOCOL_PREFIX}${label}\0`)];

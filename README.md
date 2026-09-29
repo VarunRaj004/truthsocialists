@@ -36,7 +36,7 @@ The prototype uses Semaphore-style Merkle membership. A custom zero-knowledge RS
 
 ## Current status
 
-Design baseline complete. Phase 0 and the first Phase 1 protocol slice are now in development.
+Design baseline complete. The TypeScript Phase 1 protocol core is implemented; cross-language conformance and dedicated continuous fuzzing remain before the Phase 1 exit gate.
 
 Implemented so far:
 
@@ -45,6 +45,10 @@ Implemented so far:
 - SHA-256 framing, BN254 scalar validation, hash-to-field and domain constants;
 - canonical protocol-object builders;
 - Ed25519 signature/key-ID verification;
+- strict receipt, membership-checkpoint, and 60-second proof-lease verification;
+- AES-256-GCM complaint encryption helpers and deterministic authenticated-data bindings;
+- RFC 9180 base-mode X25519/HKDF-SHA256/AES-256-GCM handler-DEK wrapping;
+- RFC 6962-style log leaf/node hashing and circuit artifact manifests;
 - conformance tests against the published reference vectors.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md) for the executable code and boundaries.

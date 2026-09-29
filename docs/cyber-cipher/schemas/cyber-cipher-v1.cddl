@@ -98,6 +98,22 @@ original-evidence-record = {
   5: bytes ; encrypted/original bytes exist only inside outer encrypted package
 }
 
+complaint-encryption-aad = {
+  1: 1,
+  2: uuid, ; complaintId
+  3: uuid, ; matterId
+  4: uint32, ; matterVersion
+  5: bstr32, ; complaintCommitment
+  6: bstr32 ; handlerKeyId
+}
+
+handler-dek-aad = {
+  1: 1,
+  2: uuid, ; complaintId
+  3: bstr32, ; complaintCommitment
+  4: bstr32 ; handlerKeyId
+}
+
 receipt-body = {
   1: 1,
   2: bstr16,

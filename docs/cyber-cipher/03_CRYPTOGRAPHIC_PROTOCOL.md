@@ -278,7 +278,7 @@ If any step fails, none are committed. The user re-encrypts local recovery bundl
 
 ## 10. Complaint encryption and handler reassignment
 
-Generate random `DEK` (32 bytes) and nonce (12 bytes). Encrypt the deterministic-CBOR private complaint package using AES-256-GCM. AAD binds protocol version, complaint ID, matter ID/version, complaint commitment, and handler key ID.
+Generate random `DEK` (32 bytes) and nonce (12 bytes). Encrypt the deterministic-CBOR private complaint package using AES-256-GCM with a 16-byte authentication tag. The AAD is deterministic CBOR `complaint-encryption-aad`: `{1: protocolVersion, 2: complaintId, 3: matterId, 4: matterVersion, 5: complaintCommitment, 6: handlerKeyId}`.
 
 Wrap `DEK` with RFC 9180 HPKE using:
 
@@ -286,8 +286,8 @@ Wrap `DEK` with RFC 9180 HPKE using:
 - KDF: HKDF-SHA256;
 - AEAD: AES-256-GCM;
 - mode: base mode;
-- `info`: `"CYBER-CIPHER/v1/handler-dek" || matterId || version`;
-- AAD: complaint ID, complaint commitment, and handler key ID.
+- `info`: UTF-8 `"CYBER-CIPHER/v1/handler-dek" || matterId16 || uint32be(matterVersion)`;
+- AAD: deterministic CBOR `handler-dek-aad`: `{1: protocolVersion, 2: complaintId, 3: complaintCommitment, 4: handlerKeyId}`.
 
 The CS stores the ciphertext, nonce, tag, HPKE encapsulated key, wrapped DEK, suite identifiers, and handler key ID. It never stores the plaintext DEK.
 

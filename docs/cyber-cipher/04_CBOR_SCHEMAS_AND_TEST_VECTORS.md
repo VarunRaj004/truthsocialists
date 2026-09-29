@@ -88,6 +88,12 @@ The signed wrapper uses key `1` for the unsigned body and key `2` for the 64-byt
 
 Attachment record keys are `1=index`, `2=size`, `3=MIME`, `4=sanitized filename`, and `5=SHA-256(final sanitized bytes)`.
 
+### Encryption authenticated data
+
+The AES-256-GCM complaint-package AAD is a deterministic-CBOR map with keys `1=protocolVersion`, `2=complaintId`, `3=matterId`, `4=matterVersion`, `5=complaintCommitment`, and `6=handlerKeyId`.
+
+The HPKE handler-DEK AAD is a deterministic-CBOR map with keys `1=protocolVersion`, `2=complaintId`, `3=complaintCommitment`, and `4=handlerKeyId`. HPKE `info` is the literal UTF-8 protocol label followed by the 16-byte matter ID and four-byte big-endian matter version.
+
 ### Receipt unsigned body
 
 | Key | Field | Type |
