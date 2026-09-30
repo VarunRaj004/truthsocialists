@@ -259,11 +259,13 @@ bundleKey = HKDF(recoveryId16, recoverySeed16,
   "CYBER-CIPHER/v1/mailbox-bundle", 32)
 ```
 
-`recoverySignSeed` is the Ed25519 private seed. The person backup and mailbox bundle use AES-256-GCM with fresh random 12-byte nonces and AAD containing protocol version, recovery ID, purpose, and generation.
+`recoverySignSeed` is the Ed25519 private seed. The person backup and mailbox bundle use AES-256-GCM with fresh random 12-byte nonces and deterministic-CBOR AAD containing protocol version, SaaS tenant ID, recovery ID, purpose, and generation.
 
 ### 9.2 Challenge and atomic rotation
 
-The IdA returns a signed challenge with random 16-byte challenge ID, recovery ID, issue/expiry times, and server nonce. Maximum lifetime is five minutes. The replacement device signs the challenge hash, new `deviceHash`, new recovery public key/ID, and the stored `personHash` using the old recovery key.
+The IdA returns a signed deterministic-CBOR challenge with SaaS tenant ID, random 16-byte challenge ID, recovery ID and generation, issue/expiry times, random 32-byte server nonce, and dedicated recovery-challenge key ID. Maximum lifetime is five minutes.
+
+The replacement device signs a deterministic-CBOR authorization containing the tenant ID, SHA-256 hash of the complete signed challenge, stored `personHash`, new `deviceHash`, new recovery public key/ID, and expected recovery generation. The Ed25519 signing input is `"CYBER-CIPHER/v1/recovery-authorization\x00" || CBOR(authorization)`. Binding the complete signed challenge prevents challenge or signer substitution; tenant and generation fields prevent cross-tenant and stale-key replay.
 
 Within one serializable transaction the IdA:
 

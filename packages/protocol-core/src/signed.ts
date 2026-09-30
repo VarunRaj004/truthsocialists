@@ -15,10 +15,12 @@ import {
 import {
   membershipCheckpointBody,
   proofLeaseBody,
+  recoveryChallengeBody,
   receiptBody,
   type MembershipCheckpointBodyInput,
   type ProofLeaseBodyInput,
   type ProofLeasePurposeValue,
+  type RecoveryChallengeBodyInput,
   type ReceiptBodyInput,
 } from "./objects.js";
 import { assertBytesLength } from "./validation.js";
@@ -187,5 +189,50 @@ export function verifyProofLease(
   }
   if (expected.now < value.issuedAt) throw new Error("proof lease is not active yet");
   if (expected.now > value.expiresAt) throw new Error("proof lease has expired");
+  return value;
+}
+
+export interface RecoveryChallengeVerificationExpectation {
+  now: bigint;
+  tenantId: Uint8Array;
+  recoveryId?: Uint8Array;
+  recoveryGeneration?: bigint;
+}
+
+export function verifyRecoveryChallenge(
+  encoded: Uint8Array,
+  publicKey: Uint8Array,
+  expected: RecoveryChallengeVerificationExpectation,
+): RecoveryChallengeBodyInput {
+  const decoded = decodeSignedBody(encoded, [1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n]);
+  const value: RecoveryChallengeBodyInput = {
+    tenantId: bytesValue(decoded.body, 2n, 16),
+    challengeId: bytesValue(decoded.body, 3n, 16),
+    recoveryId: bytesValue(decoded.body, 4n, 16),
+    recoveryGeneration: uintValue(decoded.body, 5n),
+    issuedAt: uintValue(decoded.body, 6n),
+    expiresAt: uintValue(decoded.body, 7n),
+    serverNonce: bytesValue(decoded.body, 8n, 32),
+    signingKeyId: bytesValue(decoded.body, 9n, 32),
+  };
+  recoveryChallengeBody(value);
+  if (uintValue(decoded.body, 1n) !== 1n) {
+    throw new Error("unsupported recovery-challenge protocol version");
+  }
+  verifyDedicatedKey("recovery-challenge", decoded, publicKey, value.signingKeyId);
+  if (!bytesEqual(value.tenantId, expected.tenantId)) {
+    throw new Error("recovery challenge tenant does not match");
+  }
+  if (expected.recoveryId !== undefined && !bytesEqual(value.recoveryId, expected.recoveryId)) {
+    throw new Error("recovery challenge recovery ID does not match");
+  }
+  if (
+    expected.recoveryGeneration !== undefined &&
+    value.recoveryGeneration !== expected.recoveryGeneration
+  ) {
+    throw new Error("recovery challenge generation does not match");
+  }
+  if (expected.now < value.issuedAt) throw new Error("recovery challenge is not active yet");
+  if (expected.now > value.expiresAt) throw new Error("recovery challenge has expired");
   return value;
 }

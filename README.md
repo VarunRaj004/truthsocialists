@@ -50,6 +50,7 @@ Implemented so far:
 - RFC 9180 base-mode X25519/HKDF-SHA256/AES-256-GCM handler-DEK wrapping;
 - RFC 6962-style log leaf/node hashing and circuit artifact manifests;
 - tenant-scoped depth-16 Poseidon membership tree, monotonic allocation, revocation, recovery rotation, public deltas, and signed checkpoints;
+- HKDF-derived recovery keys, encrypted recovery backups, signed five-minute challenges, one-time authorization, and mandatory recovery rotation;
 - SaaS tenant registry that forbids checkpoint-key reuse and keeps tenant trust zones separately routed;
 - conformance tests against the published reference vectors.
 

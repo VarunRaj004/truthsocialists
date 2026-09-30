@@ -94,6 +94,14 @@ The AES-256-GCM complaint-package AAD is a deterministic-CBOR map with keys `1=p
 
 The HPKE handler-DEK AAD is a deterministic-CBOR map with keys `1=protocolVersion`, `2=complaintId`, `3=complaintCommitment`, and `4=handlerKeyId`. HPKE `info` is the literal UTF-8 protocol label followed by the 16-byte matter ID and four-byte big-endian matter version.
 
+### Recovery objects
+
+The signed recovery-challenge body uses keys `1=protocolVersion`, `2=tenantId`, `3=challengeId`, `4=recoveryId`, `5=recoveryGeneration`, `6=issuedAt`, `7=expiresAt`, `8=serverNonce`, and `9=signingKeyId`. Its signed wrapper is `{1: body, 2: signature64}` and its lifetime cannot exceed five minutes.
+
+The recovery authorization uses keys `1=protocolVersion`, `2=tenantId`, `3=SHA-256(complete signed challenge)`, `4=personAnchor`, `5=newDeviceHash`, `6=newRecoveryId`, `7=newRecoveryPublicKey`, and `8=expectedRecoveryGeneration`.
+
+Recovery-backup AAD uses keys `1=protocolVersion`, `2=tenantId`, `3=recoveryId`, `4=purpose` (`1` person secret, `2` mailbox bundle), and `5=generation`.
+
 ### Receipt unsigned body
 
 | Key | Field | Type |

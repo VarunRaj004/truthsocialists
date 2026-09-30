@@ -70,6 +70,42 @@ proof-lease = {
   2: bstr64
 }
 
+recovery-challenge-body = {
+  1: 1,
+  2: uuid, ; SaaS tenantId
+  3: bstr16, ; challengeId
+  4: bstr16, ; recoveryId
+  5: uint32, ; recoveryGeneration
+  6: uint64, ; issuedAt milliseconds
+  7: uint64, ; expiresAt milliseconds, at most five minutes later
+  8: bstr32, ; serverNonce
+  9: bstr32 ; signingKeyId
+}
+
+recovery-challenge = {
+  1: recovery-challenge-body,
+  2: bstr64
+}
+
+recovery-authorization = {
+  1: 1,
+  2: uuid, ; SaaS tenantId
+  3: bstr32, ; SHA-256(complete signed recovery challenge)
+  4: field32, ; stored personAnchor
+  5: field32, ; newDeviceHash
+  6: bstr16, ; newRecoveryId
+  7: bstr32, ; newRecoveryPublicKey
+  8: uint32 ; expectedRecoveryGeneration
+}
+
+recovery-backup-aad = {
+  1: 1,
+  2: uuid, ; SaaS tenantId
+  3: bstr16, ; recoveryId
+  4: 1..2, ; person secret or mailbox bundle
+  5: uint32 ; generation
+}
+
 proof-envelope = {
   1: 1..2, ; scheme registry: 1 Groth16-BN254, 2 future RSA accumulator
   2: uint32, ; circuitVersion

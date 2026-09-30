@@ -11,10 +11,15 @@ Implemented:
 - membership-path construction and verification
 - synthetic-only enrollment guardrails
 - device/recovery rotation after external recovery authentication
+- HKDF-SHA256 recovery signing, person-backup, and mailbox-bundle key derivation
+- deterministic Ed25519 recovery keys derived from the 128-bit user-held seed
+- AES-256-GCM recovery backups bound to tenant, recovery ID, purpose, and generation
+- tenant-bound signed five-minute recovery challenges with bounded attempts
+- old-recovery-key authorization, one-time challenge consumption, and mandatory credential rotation
 - deterministic public update batches and Ed25519-signed checkpoint chains
 - SaaS registry isolation and a ban on checkpoint-key reuse between tenants
 
-The in-memory service is a security-domain prototype, not a durable transaction store. Its `rotateAfterVerifiedRecovery` entry point assumes the recovery challenge and old recovery signature were already verified. The next slice will implement that five-minute challenge protocol and a serializable persistence adapter.
+The in-memory service is a security-domain prototype, not a durable transaction store. `TenantRecoveryService` verifies the five-minute challenge and old recovery signature before calling `rotateAfterVerifiedRecovery`. A serializable persistence adapter is still required so the same atomic behavior survives multiple processes, restarts, and database concurrency.
 
 Each SaaS tenant owns a separate service instance, checkpoint key, membership state, database routing target, and public checkpoint namespace. The public update-batch hash commits the 16-byte tenant ID; checkpoint keys cannot be shared across tenants.
 

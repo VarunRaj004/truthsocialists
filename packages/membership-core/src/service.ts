@@ -286,6 +286,13 @@ export class TenantMembershipService {
     return record === undefined ? undefined : this.cloneRecord(record);
   }
 
+  enrollmentByRecoveryId(recoveryId: Uint8Array): EnrollmentRecord | undefined {
+    const enrollmentId = this.recoveryIds.get(
+      bytesToHex(assertBytesLength("recoveryId", recoveryId, 16)),
+    );
+    return enrollmentId === undefined ? undefined : this.enrollment(enrollmentId);
+  }
+
   tenant(): TenantScope {
     return { tenantId: cloneBytes(this.tenantScope.tenantId), tenantSlug: this.tenantScope.tenantSlug };
   }

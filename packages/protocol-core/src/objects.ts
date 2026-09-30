@@ -226,6 +226,99 @@ export function handlerDekAad(input: HandlerDekAadInput): Map<CborKey, CborValue
   ]);
 }
 
+export interface RecoveryChallengeBodyInput {
+  tenantId: Uint8Array;
+  challengeId: Uint8Array;
+  recoveryId: Uint8Array;
+  recoveryGeneration: bigint;
+  issuedAt: bigint;
+  expiresAt: bigint;
+  serverNonce: Uint8Array;
+  signingKeyId: Uint8Array;
+}
+
+export function recoveryChallengeBody(
+  input: RecoveryChallengeBodyInput,
+): Map<CborKey, CborValue> {
+  assertUint("issuedAt", input.issuedAt, UINT64_MAX);
+  assertUint("expiresAt", input.expiresAt, UINT64_MAX);
+  if (input.expiresAt < input.issuedAt) {
+    throw new RangeError("recovery challenge expiry must not precede its issue time");
+  }
+  if (input.expiresAt - input.issuedAt > 300_000n) {
+    throw new RangeError("recovery challenge lifetime must not exceed five minutes");
+  }
+  return integerMap([
+    [1, PROTOCOL_VERSION],
+    [2, assertBytesLength("tenantId", input.tenantId, 16)],
+    [3, assertBytesLength("challengeId", input.challengeId, 16)],
+    [4, assertBytesLength("recoveryId", input.recoveryId, 16)],
+    [5, assertUint("recoveryGeneration", input.recoveryGeneration, UINT32_MAX)],
+    [6, input.issuedAt],
+    [7, input.expiresAt],
+    [8, assertBytesLength("serverNonce", input.serverNonce, 32)],
+    [9, assertBytesLength("signingKeyId", input.signingKeyId, 32)],
+  ]);
+}
+
+export interface RecoveryAuthorizationInput {
+  tenantId: Uint8Array;
+  signedChallengeHash: Uint8Array;
+  personAnchor: Uint8Array;
+  newDeviceHash: Uint8Array;
+  newRecoveryId: Uint8Array;
+  newRecoveryPublicKey: Uint8Array;
+  expectedRecoveryGeneration: bigint;
+}
+
+export function recoveryAuthorization(
+  input: RecoveryAuthorizationInput,
+): Map<CborKey, CborValue> {
+  decodeFieldElement(input.personAnchor);
+  decodeFieldElement(input.newDeviceHash);
+  return integerMap([
+    [1, PROTOCOL_VERSION],
+    [2, assertBytesLength("tenantId", input.tenantId, 16)],
+    [3, assertBytesLength("signedChallengeHash", input.signedChallengeHash, 32)],
+    [4, input.personAnchor],
+    [5, input.newDeviceHash],
+    [6, assertBytesLength("newRecoveryId", input.newRecoveryId, 16)],
+    [7, assertBytesLength("newRecoveryPublicKey", input.newRecoveryPublicKey, 32)],
+    [8, assertUint("expectedRecoveryGeneration", input.expectedRecoveryGeneration, UINT32_MAX)],
+  ]);
+}
+
+export const RecoveryBackupPurpose = {
+  PersonSecret: 1n,
+  MailboxBundle: 2n,
+} as const;
+
+export type RecoveryBackupPurposeValue =
+  (typeof RecoveryBackupPurpose)[keyof typeof RecoveryBackupPurpose];
+
+export interface RecoveryBackupAadInput {
+  tenantId: Uint8Array;
+  recoveryId: Uint8Array;
+  purpose: RecoveryBackupPurposeValue;
+  generation: bigint;
+}
+
+export function recoveryBackupAad(input: RecoveryBackupAadInput): Map<CborKey, CborValue> {
+  if (
+    input.purpose !== RecoveryBackupPurpose.PersonSecret &&
+    input.purpose !== RecoveryBackupPurpose.MailboxBundle
+  ) {
+    throw new RangeError("unsupported recovery backup purpose");
+  }
+  return integerMap([
+    [1, PROTOCOL_VERSION],
+    [2, assertBytesLength("tenantId", input.tenantId, 16)],
+    [3, assertBytesLength("recoveryId", input.recoveryId, 16)],
+    [4, input.purpose],
+    [5, assertUint("generation", input.generation, UINT32_MAX)],
+  ]);
+}
+
 export interface ArtifactManifestInput {
   circuitName: string;
   circuitVersion: bigint;
