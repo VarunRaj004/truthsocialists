@@ -39,6 +39,20 @@ membership-checkpoint = {
   2: bstr64
 }
 
+membership-operation = {
+  1: uint32, ; sequenceInBatch
+  2: 1..2, ; activate or revoke
+  3: uint32, ; leafIndex
+  4: field32 ; new leaf value, including EMPTY_LEAF for revocation
+}
+
+membership-delta = {
+  1: 1,
+  2: uuid, ; SaaS tenantId
+  3: uint64, ; epoch
+  4: [+ membership-operation]
+}
+
 proof-lease-body = {
   1: 1,
   2: bstr16, ; challengeId

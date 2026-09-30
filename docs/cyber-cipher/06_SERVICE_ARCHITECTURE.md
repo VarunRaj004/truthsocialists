@@ -4,6 +4,8 @@
 
 The prototype uses separately deployable containers organized by trust zone, not a single process and not a large production microservice estate. Separation is driven by privacy boundaries: identity services must not share storage, credentials, or telemetry with complaint services. Docker Compose is the initial runtime; production can map the same boundaries to Kubernetes or isolated virtual machines after operational review.
 
+For SaaS, these trust zones are instantiated with tenant-specific database routing, object namespaces, and KMS keys. Stateless binaries may be shared, but a tenant is selected from trusted routing configuration before any data or key access. The prototype does not use shared identity/complaint tables with request-supplied tenant filters.
+
 The reference diagram is also available as `diagrams/service-architecture.mmd`.
 
 ```mermaid

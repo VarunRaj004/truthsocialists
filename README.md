@@ -49,8 +49,10 @@ Implemented so far:
 - AES-256-GCM complaint encryption helpers and deterministic authenticated-data bindings;
 - RFC 9180 base-mode X25519/HKDF-SHA256/AES-256-GCM handler-DEK wrapping;
 - RFC 6962-style log leaf/node hashing and circuit artifact manifests;
+- tenant-scoped depth-16 Poseidon membership tree, monotonic allocation, revocation, recovery rotation, public deltas, and signed checkpoints;
+- SaaS tenant registry that forbids checkpoint-key reuse and keeps tenant trust zones separately routed;
 - conformance tests against the published reference vectors.
 
-See [`packages/protocol-core`](packages/protocol-core/README.md) for the executable code and boundaries.
+See [`packages/protocol-core`](packages/protocol-core/README.md) and [`packages/membership-core`](packages/membership-core/README.md) for the executable code and current boundaries.
 
 This is not production-ready software. Real deployment requires external cryptographic, penetration, privacy, accessibility, legal, and operational reviews.

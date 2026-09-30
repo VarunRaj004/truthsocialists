@@ -15,6 +15,15 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/membership-core:
+    dependencies:
+      '@cyber-cipher/protocol-core':
+        specifier: workspace:*
+        version: link:../protocol-core
+      poseidon-lite:
+        specifier: 0.3.0
+        version: 0.3.0
+
   packages/protocol-core:
     dependencies:
       '@hpke/core':
@@ -161,6 +170,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  poseidon-lite@0.3.0:
+    resolution: {integrity: sha512-ilJj4MIve4uBEG7SrtPqUUNkvpJ/pLVbndxa0WvebcQqeIhe+h72JR4g0EvwchUzm9sOQDlOjiDNmRAgxNZl4A==}
+
   typescript@7.0.2:
     resolution: {integrity: sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==}
     engines: {node: '>=16.20.0'}
@@ -244,6 +256,8 @@ snapshots:
 
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
+
+  poseidon-lite@0.3.0: {}
 
   typescript@7.0.2:
     optionalDependencies:

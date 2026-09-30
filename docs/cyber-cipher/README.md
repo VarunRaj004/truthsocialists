@@ -19,6 +19,7 @@ This directory is the implementation baseline for Cyber Cipher, an unlinkable, e
 7. [Phased implementation roadmap](07_IMPLEMENTATION_ROADMAP.md)
 8. [Security and acceptance-test plan](08_SECURITY_AND_ACCEPTANCE_TEST_PLAN.md)
 9. [Deliverable 4: comparative verifiability report](DELIVERABLE_4_VERIFIABILITY_REPORT.md)
+10. [SaaS tenancy profile](09_SAAS_TENANCY.md)
 
 Machine-readable supporting artifacts are under `schemas/`, `api/`, `database/`, and `test-vectors/`.
 

@@ -10,6 +10,7 @@
 - Public binary APIs use `application/cbor`; diagnostic JSON endpoints, where enabled, are not signature inputs.
 - Date/time database columns are UTC. Cryptographic wire timestamps are Unix milliseconds.
 - The reference DDL is `database/reference-schema.sql`; physical deployments split its sections into different database clusters.
+- In the SaaS prototype, the complete identity and complaint database split is instantiated per tenant. The shared control plane stores routing and public configuration only; it has no cross-zone query credential. See `09_SAAS_TENANCY.md`.
 
 ## 2. Identity database
 
