@@ -1,8 +1,10 @@
+import { timingSafeEqual } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { assertBytesLength, bytesToHex } from "@cyber-cipher/protocol-core";
 import { emptyLeaf, memberLeaf, scalarToBytes } from "@cyber-cipher/membership-core";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TENANT_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const MAX_LEAVES = 65_536;
 const MAX_RECOVERY_ATTEMPTS = 10;
@@ -90,6 +92,28 @@ export interface CompleteRecoveryTransactionInput {
   authorize(locked: LockedRecoveryAuthorization): void | Promise<void>;
 }
 
+export type IdentityIdempotencyScope = "enrollment" | "recovery-complete";
+
+export interface IdentityIdempotencyRequest<T> {
+  scope: IdentityIdempotencyScope;
+  key: string;
+  requestHash: Uint8Array;
+  encodeResponse(value: T): Uint8Array;
+}
+
+export interface IdempotentIdentityResult<T> {
+  value?: T;
+  responseCbor: Uint8Array;
+  replayed: boolean;
+}
+
+export class IdempotencyConflictError extends Error {
+  constructor() {
+    super("idempotency key was reused with different request bytes");
+    this.name = "IdempotencyConflictError";
+  }
+}
+
 export interface MembershipState {
   nextLeafIndex: number;
   currentEpoch: bigint;
@@ -124,6 +148,11 @@ interface RecoveryRow extends EnrollmentRow {
   expired: boolean;
 }
 
+interface IdempotencyRow {
+  request_hash: Buffer;
+  response_cbor: Buffer | null;
+}
+
 function assertUuid(name: string, value: string): string {
   if (!UUID_PATTERN.test(value)) throw new TypeError(`${name} must be a canonical UUID`);
   return value.toLowerCase();
@@ -146,6 +175,21 @@ function enrollmentFromRow(row: EnrollmentRow): PersistentEnrollment {
     recoveryGeneration: row.recovery_generation,
     active: row.active,
     rowVersion: BigInt(row.row_version),
+  };
+}
+
+function prepareEnrollment(input: EnrollSyntheticInput): { leaf: bigint; enrolledAt: Date } {
+  assertUuid("enrollmentId", input.enrollmentId);
+  if (!input.syntheticIdentityRef.startsWith("synthetic:")) {
+    throw new TypeError("prototype enrollment accepts synthetic identities only");
+  }
+  assertBytesLength("recoveryId", input.recoveryId, 16);
+  assertBytesLength("recoveryPublicKey", input.recoveryPublicKey, 32);
+  scalarToBytes(input.personAnchor);
+  scalarToBytes(input.deviceHash);
+  return {
+    leaf: memberLeaf(input.personAnchor, input.deviceHash),
+    enrolledAt: input.enrolledAt ?? new Date(),
   };
 }
 
@@ -188,57 +232,59 @@ export class PostgresIdentityStore {
   }
 
   async enrollSynthetic(input: EnrollSyntheticInput): Promise<PersistentEnrollment> {
-    assertUuid("enrollmentId", input.enrollmentId);
-    if (!input.syntheticIdentityRef.startsWith("synthetic:")) {
-      throw new TypeError("prototype enrollment accepts synthetic identities only");
-    }
-    assertBytesLength("recoveryId", input.recoveryId, 16);
-    assertBytesLength("recoveryPublicKey", input.recoveryPublicKey, 32);
-    scalarToBytes(input.personAnchor);
-    scalarToBytes(input.deviceHash);
-    const leaf = memberLeaf(input.personAnchor, input.deviceHash);
-    const enrolledAt = input.enrolledAt ?? new Date();
+    const prepared = prepareEnrollment(input);
     return this.serializable(async (client) => {
       await this.assertTenant(client);
-      const state = await client.query<{ next_leaf_index: number }>(
-        "SELECT next_leaf_index FROM ida.membership_state WHERE singleton = true FOR UPDATE",
-      );
-      const index = state.rows[0]!.next_leaf_index;
-      if (index >= MAX_LEAVES) throw new IdentityStoreError("TREE_FULL", "membership tree is full");
-      const inserted = await client.query<EnrollmentRow>(
-        `INSERT INTO ida.enrollment(
-           enrollment_id, synthetic_identity_ref, person_anchor, active_device_hash,
-           active_leaf_index, recovery_id, recovery_public_key, recovery_generation,
-           active, enrolled_at, updated_at
-         ) VALUES ($1::uuid, $2, $3::numeric, $4::numeric, $5, $6, $7, 1, true, $8, $8)
-         RETURNING *`,
-        [
-          input.enrollmentId,
-          input.syntheticIdentityRef,
-          input.personAnchor.toString(),
-          input.deviceHash.toString(),
-          index,
-          Buffer.from(input.recoveryId),
-          Buffer.from(input.recoveryPublicKey),
-          enrolledAt,
-        ],
-      );
-      await client.query(
-        "INSERT INTO ida.membership_leaf(leaf_index, leaf_value, state) VALUES ($1, $2::numeric, 'ACTIVE')",
-        [index, leaf.toString()],
-      );
-      await client.query(
-        `INSERT INTO ida.membership_pending_update(leaf_index, operation, new_leaf_value)
-         VALUES ($1, 'ACTIVATE', $2::numeric)`,
-        [index, leaf.toString()],
-      );
-      await client.query(
-        `UPDATE ida.membership_state
-         SET next_leaf_index = next_leaf_index + 1, row_version = row_version + 1
-         WHERE singleton = true`,
-      );
-      return enrollmentFromRow(inserted.rows[0]!);
+      return this.enrollWithClient(client, input, prepared);
     });
+  }
+
+  async enrollSyntheticIdempotent(
+    input: EnrollSyntheticInput,
+    idempotency: IdentityIdempotencyRequest<PersistentEnrollment>,
+  ): Promise<IdempotentIdentityResult<PersistentEnrollment>> {
+    if (idempotency.scope !== "enrollment") throw new TypeError("idempotency scope must be enrollment");
+    const prepared = prepareEnrollment(input);
+    return this.serializable(async (client) => {
+      await this.assertTenant(client);
+      const claim = await this.claimIdempotency(client, idempotency);
+      if (claim !== undefined) return claim;
+      const enrollment = await this.enrollWithClient(client, input, prepared);
+      const responseCbor = this.encodeIdempotentResponse(idempotency, enrollment);
+      await this.completeIdempotency(client, idempotency, responseCbor);
+      return { value: enrollment, responseCbor, replayed: false };
+    });
+  }
+
+  async idempotentResponse(
+    scope: IdentityIdempotencyScope,
+    key: string,
+    requestHash: Uint8Array,
+  ): Promise<Uint8Array | undefined> {
+    if (!UUID_V4_PATTERN.test(key)) throw new TypeError("idempotency key must be a UUIDv4");
+    assertBytesLength("idempotency request hash", requestHash, 32);
+    const client = await this.pool.connect();
+    try {
+      await this.assertTenant(client);
+      const result = await client.query<IdempotencyRow>(
+        `SELECT request_hash, response_cbor
+         FROM ida.idempotency_record
+         WHERE scope = $1 AND idempotency_key = $2::uuid`,
+        [scope, key.toLowerCase()],
+      );
+      if (result.rowCount === 0) return undefined;
+      const row = result.rows[0]!;
+      if (
+        row.request_hash.length !== requestHash.length ||
+        !timingSafeEqual(row.request_hash, Buffer.from(requestHash))
+      ) {
+        throw new IdempotencyConflictError();
+      }
+      if (row.response_cbor === null) throw new Error("idempotency record is incomplete");
+      return new Uint8Array(row.response_cbor);
+    } finally {
+      client.release();
+    }
   }
 
   async issueRecoveryChallenge(
@@ -293,6 +339,25 @@ export class PostgresIdentityStore {
   async completeRecoveryAtomic(
     input: CompleteRecoveryTransactionInput,
   ): Promise<PersistentEnrollment> {
+    const result = await this.completeRecoveryInternal(input);
+    if (result.value === undefined) throw new Error("non-idempotent recovery did not return a value");
+    return result.value;
+  }
+
+  async completeRecoveryAtomicIdempotent(
+    input: CompleteRecoveryTransactionInput,
+    idempotency: IdentityIdempotencyRequest<PersistentEnrollment>,
+  ): Promise<IdempotentIdentityResult<PersistentEnrollment>> {
+    if (idempotency.scope !== "recovery-complete") {
+      throw new TypeError("idempotency scope must be recovery-complete");
+    }
+    return this.completeRecoveryInternal(input, idempotency);
+  }
+
+  private async completeRecoveryInternal(
+    input: CompleteRecoveryTransactionInput,
+    idempotency?: IdentityIdempotencyRequest<PersistentEnrollment>,
+  ): Promise<IdempotentIdentityResult<PersistentEnrollment>> {
     assertBytesLength("challengeId", input.challengeId, 16);
     assertBytesLength("newRecoveryId", input.newRecoveryId, 16);
     assertBytesLength("newRecoveryPublicKey", input.newRecoveryPublicKey, 32);
@@ -304,6 +369,13 @@ export class PostgresIdentityStore {
       try {
         await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
         await this.assertTenant(client);
+        if (idempotency !== undefined) {
+          const claim = await this.claimIdempotency(client, idempotency);
+          if (claim !== undefined) {
+            await client.query("COMMIT");
+            return claim;
+          }
+        }
         const result = await client.query<RecoveryRow>(
           `SELECT e.*, c.signed_challenge_cbor,
                   c.recovery_generation AS challenge_recovery_generation,
@@ -360,6 +432,7 @@ export class PostgresIdentityStore {
             "recovery authorization was rejected",
             { cause: error },
           );
+          if (idempotency !== undefined) await this.releaseIdempotency(client, idempotency);
           await client.query("COMMIT");
           throw rejection;
         }
@@ -423,8 +496,16 @@ export class PostgresIdentityStore {
           "UPDATE ida.recovery_challenge SET consumed_at = clock_timestamp() WHERE challenge_id = $1",
           [Buffer.from(input.challengeId)],
         );
+        const enrollment = enrollmentFromRow(updated.rows[0]!);
+        const responseCbor =
+          idempotency === undefined
+            ? new Uint8Array()
+            : this.encodeIdempotentResponse(idempotency, enrollment);
+        if (idempotency !== undefined) {
+          await this.completeIdempotency(client, idempotency, responseCbor);
+        }
         await client.query("COMMIT");
-        return enrollmentFromRow(updated.rows[0]!);
+        return { value: enrollment, responseCbor, replayed: false };
       } catch (error) {
         if (error !== rejection) await client.query("ROLLBACK").catch(() => undefined);
         if (error !== rejection && isSerializationFailure(error) && retry + 1 < MAX_SERIALIZATION_RETRIES) {
@@ -495,6 +576,118 @@ export class PostgresIdentityStore {
     } finally {
       client.release();
     }
+  }
+
+  private async enrollWithClient(
+    client: PoolClient,
+    input: EnrollSyntheticInput,
+    prepared: { leaf: bigint; enrolledAt: Date },
+  ): Promise<PersistentEnrollment> {
+    const state = await client.query<{ next_leaf_index: number }>(
+      "SELECT next_leaf_index FROM ida.membership_state WHERE singleton = true FOR UPDATE",
+    );
+    const index = state.rows[0]!.next_leaf_index;
+    if (index >= MAX_LEAVES) throw new IdentityStoreError("TREE_FULL", "membership tree is full");
+    const inserted = await client.query<EnrollmentRow>(
+      `INSERT INTO ida.enrollment(
+         enrollment_id, synthetic_identity_ref, person_anchor, active_device_hash,
+         active_leaf_index, recovery_id, recovery_public_key, recovery_generation,
+         active, enrolled_at, updated_at
+       ) VALUES ($1::uuid, $2, $3::numeric, $4::numeric, $5, $6, $7, 1, true, $8, $8)
+       RETURNING *`,
+      [
+        input.enrollmentId,
+        input.syntheticIdentityRef,
+        input.personAnchor.toString(),
+        input.deviceHash.toString(),
+        index,
+        Buffer.from(input.recoveryId),
+        Buffer.from(input.recoveryPublicKey),
+        prepared.enrolledAt,
+      ],
+    );
+    await client.query(
+      "INSERT INTO ida.membership_leaf(leaf_index, leaf_value, state) VALUES ($1, $2::numeric, 'ACTIVE')",
+      [index, prepared.leaf.toString()],
+    );
+    await client.query(
+      `INSERT INTO ida.membership_pending_update(leaf_index, operation, new_leaf_value)
+       VALUES ($1, 'ACTIVATE', $2::numeric)`,
+      [index, prepared.leaf.toString()],
+    );
+    await client.query(
+      `UPDATE ida.membership_state
+       SET next_leaf_index = next_leaf_index + 1, row_version = row_version + 1
+       WHERE singleton = true`,
+    );
+    return enrollmentFromRow(inserted.rows[0]!);
+  }
+
+  private async claimIdempotency<T>(
+    client: PoolClient,
+    request: IdentityIdempotencyRequest<T>,
+  ): Promise<IdempotentIdentityResult<T> | undefined> {
+    if (!UUID_V4_PATTERN.test(request.key)) throw new TypeError("idempotency key must be a UUIDv4");
+    assertBytesLength("idempotency request hash", request.requestHash, 32);
+    const inserted = await client.query(
+      `INSERT INTO ida.idempotency_record(scope, idempotency_key, request_hash)
+       VALUES ($1, $2::uuid, $3)
+       ON CONFLICT (scope, idempotency_key) DO NOTHING
+       RETURNING idempotency_key`,
+      [request.scope, request.key.toLowerCase(), Buffer.from(request.requestHash)],
+    );
+    const result = await client.query<IdempotencyRow>(
+      `SELECT request_hash, response_cbor
+       FROM ida.idempotency_record
+       WHERE scope = $1 AND idempotency_key = $2::uuid
+       FOR UPDATE`,
+      [request.scope, request.key.toLowerCase()],
+    );
+    const row = result.rows[0]!;
+    if (
+      row.request_hash.length !== request.requestHash.length ||
+      !timingSafeEqual(row.request_hash, Buffer.from(request.requestHash))
+    ) {
+      throw new IdempotencyConflictError();
+    }
+    if (inserted.rowCount === 1) return undefined;
+    if (row.response_cbor === null) throw new Error("idempotency record is incomplete");
+    return { responseCbor: new Uint8Array(row.response_cbor), replayed: true };
+  }
+
+  private encodeIdempotentResponse<T>(
+    request: IdentityIdempotencyRequest<T>,
+    value: T,
+  ): Uint8Array {
+    const response = request.encodeResponse(value);
+    if (!(response instanceof Uint8Array) || response.length === 0 || response.length > 65_536) {
+      throw new RangeError("idempotent response must contain at most 64 KiB of CBOR");
+    }
+    return response.slice();
+  }
+
+  private async completeIdempotency<T>(
+    client: PoolClient,
+    request: IdentityIdempotencyRequest<T>,
+    responseCbor: Uint8Array,
+  ): Promise<void> {
+    await client.query(
+      `UPDATE ida.idempotency_record
+       SET response_cbor = $3, completed_at = clock_timestamp()
+       WHERE scope = $1 AND idempotency_key = $2::uuid`,
+      [request.scope, request.key.toLowerCase(), Buffer.from(responseCbor)],
+    );
+  }
+
+  private async releaseIdempotency<T>(
+    client: PoolClient,
+    request: IdentityIdempotencyRequest<T>,
+  ): Promise<void> {
+    await client.query(
+      `DELETE FROM ida.idempotency_record
+       WHERE scope = $1 AND idempotency_key = $2::uuid AND response_cbor IS NULL`,
+      [request.scope, request.key.toLowerCase()],
+    );
   }
 
   private async assertTenant(client: PoolClient): Promise<void> {

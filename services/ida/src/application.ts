@@ -2,6 +2,7 @@ import { randomBytes as nodeRandomBytes, timingSafeEqual } from "node:crypto";
 import {
   assertBytesLength,
   bytesToHex,
+  concatBytes,
   ed25519SpkiFromRaw,
   encodeCanonical,
   keyIdFromSpkiDer,
@@ -12,6 +13,7 @@ import {
   signingInput,
   verifyEd25519Raw,
   verifyRecoveryChallenge,
+  utf8,
 } from "@cyber-cipher/protocol-core";
 import {
   scalarFromBytes,
@@ -22,13 +24,25 @@ import type {
   CheckpointBundle,
   CompleteRecoveryTransactionInput,
   EnrollSyntheticInput,
+  IdempotentIdentityResult,
+  IdentityIdempotencyRequest,
   LockedRecoveryAuthorization,
   PersistentEnrollment,
   RecoveryChallengeDraft,
 } from "@cyber-cipher/identity-store";
+import { encodeEnrollmentResponse } from "./wire.js";
 
 export interface IdentityRepository {
   enrollSynthetic(input: EnrollSyntheticInput): Promise<PersistentEnrollment>;
+  enrollSyntheticIdempotent?(
+    input: EnrollSyntheticInput,
+    idempotency: IdentityIdempotencyRequest<PersistentEnrollment>,
+  ): Promise<IdempotentIdentityResult<PersistentEnrollment>>;
+  idempotentResponse?(
+    scope: "enrollment" | "recovery-complete",
+    key: string,
+    requestHash: Uint8Array,
+  ): Promise<Uint8Array | undefined>;
   issueRecoveryChallenge(
     recoveryId: Uint8Array,
     create: (locked: {
@@ -38,6 +52,10 @@ export interface IdentityRepository {
     }) => Promise<RecoveryChallengeDraft>,
   ): Promise<RecoveryChallengeDraft>;
   completeRecoveryAtomic(input: CompleteRecoveryTransactionInput): Promise<PersistentEnrollment>;
+  completeRecoveryAtomicIdempotent?(
+    input: CompleteRecoveryTransactionInput,
+    idempotency: IdentityIdempotencyRequest<PersistentEnrollment>,
+  ): Promise<IdempotentIdentityResult<PersistentEnrollment>>;
 }
 
 export interface CheckpointRepository {
@@ -78,8 +96,14 @@ export interface IdentityAuthorityConfig {
 
 export interface IdentityAuthorityOperations {
   enroll(command: EnrollmentCommand): Promise<PersistentEnrollment>;
+  enrollIdempotent?(command: EnrollmentCommand, key: string, requestBody: Uint8Array): Promise<Uint8Array>;
   issueRecoveryChallenge(recoveryId: Uint8Array): Promise<RecoveryChallengeResult>;
   completeRecovery(command: CompleteRecoveryCommand): Promise<PersistentEnrollment>;
+  completeRecoveryIdempotent?(
+    command: CompleteRecoveryCommand,
+    key: string,
+    requestBody: Uint8Array,
+  ): Promise<Uint8Array>;
   currentCheckpoint(): Promise<CheckpointBundle | undefined>;
   checkpointDeltas(afterEpoch: bigint, limit?: number): Promise<CheckpointBundle[]>;
 }
@@ -132,6 +156,37 @@ export class IdentityAuthorityApplication implements IdentityAuthorityOperations
       recoveryId: assertBytesLength("recoveryId", command.recoveryId, 16),
       recoveryPublicKey: assertBytesLength("recoveryPublicKey", command.recoveryPublicKey, 32),
     });
+  }
+
+  async enrollIdempotent(
+    command: EnrollmentCommand,
+    key: string,
+    requestBody: Uint8Array,
+  ): Promise<Uint8Array> {
+    const execute = this.identities.enrollSyntheticIdempotent?.bind(this.identities);
+    if (execute === undefined) throw new Error("durable enrollment idempotency is not configured");
+    if (!command.syntheticIdentityRef.startsWith("synthetic:")) {
+      throw new TypeError("prototype enrollment accepts synthetic identities only");
+    }
+    const result = await execute(
+      {
+        enrollmentId: command.enrollmentId,
+        syntheticIdentityRef: command.syntheticIdentityRef,
+        personAnchor: scalarFromBytes("personAnchor", command.personAnchor),
+        deviceHash: scalarFromBytes("deviceHash", command.deviceHash),
+        recoveryId: assertBytesLength("recoveryId", command.recoveryId, 16),
+        recoveryPublicKey: assertBytesLength("recoveryPublicKey", command.recoveryPublicKey, 32),
+      },
+      {
+        scope: "enrollment",
+        key,
+        requestHash: sha256(
+          concatBytes(utf8(command.syntheticIdentityRef), Uint8Array.of(0), requestBody),
+        ),
+        encodeResponse: encodeEnrollmentResponse,
+      },
+    );
+    return result.responseCbor;
   }
 
   async issueRecoveryChallenge(recoveryId: Uint8Array): Promise<RecoveryChallengeResult> {
@@ -198,6 +253,47 @@ export class IdentityAuthorityApplication implements IdentityAuthorityOperations
       newRecoveryPublicKey: command.newRecoveryPublicKey,
       authorize: async (locked) => this.authorizeRecovery(command, locked),
     });
+  }
+
+  async completeRecoveryIdempotent(
+    command: CompleteRecoveryCommand,
+    key: string,
+    requestBody: Uint8Array,
+  ): Promise<Uint8Array> {
+    const execute = this.identities.completeRecoveryAtomicIdempotent?.bind(this.identities);
+    if (execute === undefined) throw new Error("durable recovery idempotency is not configured");
+    const requestHash = sha256(requestBody);
+    const replay = await this.identities.idempotentResponse?.(
+      "recovery-complete",
+      key,
+      requestHash,
+    );
+    if (replay !== undefined) return replay;
+    assertBytesLength("authorizationSignature", command.authorizationSignature, 64);
+    const newDeviceHash = scalarFromBytes("newDeviceHash", command.newDeviceHash);
+    assertBytesLength("newRecoveryId", command.newRecoveryId, 16);
+    assertBytesLength("newRecoveryPublicKey", command.newRecoveryPublicKey, 32);
+    const challenge = verifyRecoveryChallenge(
+      command.signedChallengeCbor,
+      this.challengePublicKey,
+      { now: this.now(), tenantId: this.tenantId },
+    );
+    const result = await execute(
+      {
+        challengeId: challenge.challengeId,
+        newDeviceHash,
+        newRecoveryId: command.newRecoveryId,
+        newRecoveryPublicKey: command.newRecoveryPublicKey,
+        authorize: async (locked) => this.authorizeRecovery(command, locked),
+      },
+      {
+        scope: "recovery-complete",
+        key,
+        requestHash,
+        encodeResponse: encodeEnrollmentResponse,
+      },
+    );
+    return result.responseCbor;
   }
 
   currentCheckpoint(): Promise<CheckpointBundle | undefined> {

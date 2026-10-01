@@ -200,13 +200,14 @@ PostgreSQL enrollment and recovery transactions, durable 30-second signed
 membership checkpoint publisher, and deterministic-CBOR Identity Authority API
 boundary are implemented. Client-side checkpoint-chain verification, ordered
 delta application, local Poseidon-tree reconstruction, and membership-path
-updates are also implemented. Phase 2 still needs durable transaction-coupled
-API idempotency and a deployed authenticated-session adapter.
+updates are also implemented. Durable transaction-coupled API idempotency is
+now implemented; Phase 2 still needs a deployed authenticated-session adapter
+and an end-to-end PostgreSQL/API/client demo.
 
 Eight major implementation steps remain for the experimental MVP:
 
-1. Finish Phase 2 with durable API idempotency, the institutional session adapter,
-   and an end-to-end PostgreSQL/API/client demonstration.
+1. Finish Phase 2 with the institutional session adapter and an end-to-end
+   PostgreSQL/API/client demonstration.
 2. Build the Phase 3 matter registry and RFC 9474 RSA blind-entitlement issuance.
 3. Build and integrate the Phase 4 complaint and voting Groth16 circuits.
 4. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.

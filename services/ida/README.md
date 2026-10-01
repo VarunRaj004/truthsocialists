@@ -34,12 +34,16 @@ transaction. The challenge and checkpoint keys are required to be different.
 `createIdentityHttpServer` requires explicit implementations for:
 
 - `IdentityAuthorityOperations`, normally `IdentityAuthorityApplication`;
-- the authenticated enrollment-session adapter; and
-- the idempotency coordinator.
+- the authenticated enrollment-session adapter.
 
-`InMemoryIdempotencyCoordinator` exists only for local prototype tests. It
-handles concurrent duplicate requests and changed-body conflicts, but it is not
-durable or transactionally coupled to PostgreSQL. A database-backed coordinator
-must replace it before the Phase 2 exit gate or any multi-instance deployment.
+`IdentityAuthorityApplication` uses the PostgreSQL store's durable idempotent
+operations. The request hash, exact response CBOR, and state mutation commit in
+one serializable transaction; a committed retry therefore returns the original
+bytes without allocating another leaf or consuming a challenge twice. Enrollment
+hashes bind the authenticated synthetic identity as well as the request body.
+
+`InMemoryIdempotencyCoordinator` remains available only as a fallback for local
+tests and fake operations that do not implement the durable methods. It must not
+be used for a multi-instance deployment.
 The service intentionally has no default trust-header or development-login
 bypass.

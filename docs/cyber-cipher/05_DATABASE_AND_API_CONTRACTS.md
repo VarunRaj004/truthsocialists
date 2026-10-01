@@ -11,7 +11,7 @@
 - Date/time database columns are UTC. Cryptographic wire timestamps are Unix milliseconds.
 - The reference DDL is `database/reference-schema.sql`; physical deployments split its sections into different database clusters.
 - In the SaaS prototype, the complete identity and complaint database split is instantiated per tenant. The shared control plane stores routing and public configuration only; it has no cross-zone query credential. See `09_SAAS_TENANCY.md`.
-- The executable prototype identity migration is `packages/identity-store/sql/001_identity_membership.sql`. It intentionally accepts synthetic identities only; NIC lookup and encrypted operational identity fields remain outside the experimental prototype.
+- The executable prototype identity migrations are in `packages/identity-store/sql`. They intentionally accept synthetic identities only; NIC lookup and encrypted operational identity fields remain outside the experimental prototype.
 
 ## 2. Identity database
 
@@ -40,6 +40,16 @@ transactions. Challenge consumption, recovery-generation increment, old-leaf
 replacement with the fixed empty value, new monotonic leaf allocation, and both
 pending tree updates commit together. A stale challenge generation is rejected
 even if its signature would otherwise verify.
+
+### `idempotency_record`
+
+Enrollment and recovery-completion requests store `(scope, idempotency_key)`, a
+32-byte request hash, the exact response CBOR, and a 24-hour expiry. The record
+and mutation commit in the same serializable transaction. A matching replay
+returns the stored bytes; a different hash under the same key returns a conflict.
+An enrollment hash also includes the authenticated synthetic identity. Failed
+recovery authorization increments the challenge attempt count but releases the
+unfinished idempotency reservation so a corrected signature can be retried.
 
 The checkpoint worker runs immediately and on a non-overlapping 30-second
 interval. Before signing, it replays every persisted update, verifies the last

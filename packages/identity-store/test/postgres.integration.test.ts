@@ -2,10 +2,16 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
-import { verifyMembershipCheckpoint } from "@cyber-cipher/protocol-core";
+import {
+  encodeCanonical,
+  integerMap,
+  sha256,
+  verifyMembershipCheckpoint,
+} from "@cyber-cipher/protocol-core";
 import { deviceHash, personHash, type CheckpointSigner } from "@cyber-cipher/membership-core";
 import {
   applyIdentityMigrations,
+  IdempotencyConflictError,
   IdentityStoreError,
   PostgresCheckpointPublisher,
   PostgresIdentityStore,
@@ -22,6 +28,15 @@ function checkpointSigner(): CheckpointSigner {
       return new Uint8Array(sign(null, message, keys.privateKey));
     },
   };
+}
+
+function enrollmentResponse(enrollment: { enrollmentId: string; activeLeafIndex: number }): Uint8Array {
+  return encodeCanonical(
+    integerMap([
+      [1, enrollment.enrollmentId],
+      [2, BigInt(enrollment.activeLeafIndex)],
+    ]),
+  );
 }
 
 test(
@@ -46,14 +61,22 @@ test(
       const firstRecoveryId = new Uint8Array(16).fill(0x11);
       const firstEnrollmentId = randomUUID();
       const firstAnchor = personHash(101n);
-      const [first, second] = await Promise.all([
-        store.enrollSynthetic({
-          enrollmentId: firstEnrollmentId,
-          syntheticIdentityRef: "synthetic:student-0001",
-          personAnchor: firstAnchor,
-          deviceHash: deviceHash(201n),
-          recoveryId: firstRecoveryId,
-          recoveryPublicKey: new Uint8Array(32).fill(0x21),
+      const enrollmentKey = randomUUID();
+      const enrollmentHash = sha256(new Uint8Array([1, 2, 3]));
+      const firstInput = {
+        enrollmentId: firstEnrollmentId,
+        syntheticIdentityRef: "synthetic:student-0001",
+        personAnchor: firstAnchor,
+        deviceHash: deviceHash(201n),
+        recoveryId: firstRecoveryId,
+        recoveryPublicKey: new Uint8Array(32).fill(0x21),
+      };
+      const [firstResult, second] = await Promise.all([
+        store.enrollSyntheticIdempotent(firstInput, {
+          scope: "enrollment",
+          key: enrollmentKey,
+          requestHash: enrollmentHash,
+          encodeResponse: enrollmentResponse,
         }),
         store.enrollSynthetic({
           enrollmentId: randomUUID(),
@@ -64,8 +87,29 @@ test(
           recoveryPublicKey: new Uint8Array(32).fill(0x22),
         }),
       ]);
+      assert.equal(firstResult.replayed, false);
+      assert.ok(firstResult.value);
+      const first = firstResult.value;
       assert.deepEqual(new Set([first.activeLeafIndex, second.activeLeafIndex]), new Set([0, 1]));
       assert.equal((await store.membershipState()).nextLeafIndex, 2);
+      const enrollmentReplay = await store.enrollSyntheticIdempotent(firstInput, {
+        scope: "enrollment",
+        key: enrollmentKey,
+        requestHash: enrollmentHash,
+        encodeResponse: enrollmentResponse,
+      });
+      assert.equal(enrollmentReplay.replayed, true);
+      assert.deepEqual(enrollmentReplay.responseCbor, firstResult.responseCbor);
+      assert.equal((await store.membershipState()).nextLeafIndex, 2);
+      await assert.rejects(
+        store.enrollSyntheticIdempotent(firstInput, {
+          scope: "enrollment",
+          key: enrollmentKey,
+          requestHash: sha256(new Uint8Array([9, 9, 9])),
+          encodeResponse: enrollmentResponse,
+        }),
+        IdempotencyConflictError,
+      );
 
       const wrongTenant = new PostgresIdentityStore(pool, {
         tenantId: "22222222-2222-4222-8222-222222222222",
@@ -90,15 +134,23 @@ test(
       });
 
       await assert.rejects(
-        store.completeRecoveryAtomic({
-          challengeId,
-          newDeviceHash: deviceHash(301n),
-          newRecoveryId: new Uint8Array(16).fill(0x41),
-          newRecoveryPublicKey: new Uint8Array(32).fill(0x51),
-          authorize: async () => {
-            throw new Error("invalid recovery signature");
+        store.completeRecoveryAtomicIdempotent(
+          {
+            challengeId,
+            newDeviceHash: deviceHash(301n),
+            newRecoveryId: new Uint8Array(16).fill(0x41),
+            newRecoveryPublicKey: new Uint8Array(32).fill(0x51),
+            authorize: async () => {
+              throw new Error("invalid recovery signature");
+            },
           },
-        }),
+          {
+            scope: "recovery-complete",
+            key: randomUUID(),
+            requestHash: sha256(new Uint8Array([4, 5, 6])),
+            encodeResponse: enrollmentResponse,
+          },
+        ),
         (error: unknown) =>
           error instanceof IdentityStoreError && error.code === "AUTHORIZATION_REJECTED",
       );
@@ -108,6 +160,14 @@ test(
       );
       assert.equal(attempts.rows[0]!.attempts, 1);
       assert.equal((await store.enrollment(firstEnrollmentId))!.recoveryGeneration, 1);
+      assert.equal(
+        (
+          await pool.query<{ count: string }>(
+            "SELECT count(*)::text AS count FROM ida.idempotency_record WHERE scope = 'recovery-complete'",
+          )
+        ).rows[0]!.count,
+        "0",
+      );
 
       const authorize = async (locked: {
         recoveryGeneration: number;
@@ -148,17 +208,67 @@ test(
       assert.equal(rotated.activeLeafIndex, 2);
       assert.equal((await store.membershipState()).nextLeafIndex, 3);
 
+      const secondChallengeId = new Uint8Array(16).fill(0x32);
+      const secondIssuedAt = new Date();
+      await store.issueRecoveryChallenge(rotated.recoveryId, async () => ({
+        challengeId: secondChallengeId,
+        signedChallengeCbor: new Uint8Array([0xa1, 0x01, 0x03]),
+        issuedAt: secondIssuedAt,
+        expiresAt: new Date(secondIssuedAt.getTime() + 300_000),
+      }));
+      const recoveryKey = randomUUID();
+      const recoveryHash = sha256(new Uint8Array([7, 8, 9]));
+      const secondRecoveryInput = {
+        challengeId: secondChallengeId,
+        newDeviceHash: deviceHash(501n),
+        newRecoveryId: new Uint8Array(16).fill(0x63),
+        newRecoveryPublicKey: new Uint8Array(32).fill(0x73),
+        authorize: async () => undefined,
+      };
+      const recovered = await store.completeRecoveryAtomicIdempotent(secondRecoveryInput, {
+        scope: "recovery-complete",
+        key: recoveryKey,
+        requestHash: recoveryHash,
+        encodeResponse: enrollmentResponse,
+      });
+      assert.equal(recovered.replayed, false);
+      assert.equal(recovered.value?.recoveryGeneration, 3);
+      assert.equal(recovered.value?.activeLeafIndex, 3);
+      const recoveryReplay = await store.completeRecoveryAtomicIdempotent(secondRecoveryInput, {
+        scope: "recovery-complete",
+        key: recoveryKey,
+        requestHash: recoveryHash,
+        encodeResponse: enrollmentResponse,
+      });
+      assert.equal(recoveryReplay.replayed, true);
+      assert.deepEqual(recoveryReplay.responseCbor, recovered.responseCbor);
+      assert.deepEqual(
+        await store.idempotentResponse("recovery-complete", recoveryKey, recoveryHash),
+        recovered.responseCbor,
+      );
+      assert.equal((await store.membershipState()).nextLeafIndex, 4);
+      await assert.rejects(
+        store.completeRecoveryAtomicIdempotent(secondRecoveryInput, {
+          scope: "recovery-complete",
+          key: recoveryKey,
+          requestHash: sha256(new Uint8Array([8, 8, 8])),
+          encodeResponse: enrollmentResponse,
+        }),
+        IdempotencyConflictError,
+      );
+
       const leaves = await pool.query<{ leaf_index: number; state: string }>(
         "SELECT leaf_index, state FROM ida.membership_leaf ORDER BY leaf_index",
       );
       assert.deepEqual(leaves.rows, [
         { leaf_index: 0, state: "REVOKED" },
         { leaf_index: 1, state: "ACTIVE" },
-        { leaf_index: 2, state: "ACTIVE" },
+        { leaf_index: 2, state: "REVOKED" },
+        { leaf_index: 3, state: "ACTIVE" },
       ]);
       assert.deepEqual(
         (await store.pendingUpdates()).map((update) => update.operation),
-        ["ACTIVATE", "ACTIVATE", "REVOKE", "ACTIVATE"],
+        ["ACTIVATE", "ACTIVATE", "REVOKE", "ACTIVATE", "REVOKE", "ACTIVATE"],
       );
 
       const signer = checkpointSigner();

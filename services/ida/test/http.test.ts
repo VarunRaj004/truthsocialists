@@ -95,6 +95,74 @@ test("HTTP enrollment takes identity from the trusted session and replays identi
   }
 });
 
+test("HTTP enrollment prefers durable application idempotency without an in-memory coordinator", async () => {
+  let durableCalls = 0;
+  let receivedKey: string | undefined;
+  let receivedSubject: string | undefined;
+  const expectedResponse = encodeCanonical(integerMap([[1, 1n], [2, "durable"]]));
+  const operations: IdentityAuthorityOperations = {
+    async enroll() {
+      throw new Error("non-idempotent enrollment must not run");
+    },
+    async enrollIdempotent(command, key) {
+      durableCalls += 1;
+      receivedKey = key;
+      receivedSubject = command.syntheticIdentityRef;
+      return expectedResponse;
+    },
+    async issueRecoveryChallenge() {
+      throw new Error("not used");
+    },
+    async completeRecovery() {
+      throw new Error("not used");
+    },
+    async currentCheckpoint() {
+      return undefined;
+    },
+    async checkpointDeltas() {
+      return [];
+    },
+  };
+  const server = createIdentityHttpServer({
+    tenantId: new Uint8Array(16).fill(0x41),
+    operations,
+    enrollmentSessions: {
+      async syntheticIdentityFor() {
+        return "synthetic:durable-student";
+      },
+    },
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const address = server.address() as AddressInfo;
+    const key = randomUUID();
+    const response = await fetch(`http://127.0.0.1:${address.port}/ida/v1/enrollments`, {
+      method: "POST",
+      headers: { "content-type": "application/cbor", "idempotency-key": key },
+      body: Buffer.from(
+        encodeCanonical(
+          integerMap([
+            [1, randomUUID()],
+            [2, new Uint8Array(32).fill(0x42)],
+            [3, new Uint8Array(32).fill(0x43)],
+            [4, new Uint8Array(16).fill(0x44)],
+            [5, new Uint8Array(32).fill(0x45)],
+          ]),
+        ),
+      ),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(new Uint8Array(await response.arrayBuffer()), expectedResponse);
+    assert.equal(durableCalls, 1);
+    assert.equal(receivedKey, key);
+    assert.equal(receivedSubject, "synthetic:durable-student");
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("HTTP enrollment rejects absent identified sessions before reading enrollment fields", async () => {
   const server = createIdentityHttpServer({
     tenantId: new Uint8Array(16).fill(0x31),

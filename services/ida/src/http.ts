@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { sha256 } from "@cyber-cipher/protocol-core";
+import { IdempotencyConflictError as StoreIdempotencyConflictError } from "@cyber-cipher/identity-store";
 import type { IdentityAuthorityOperations } from "./application.js";
 import {
   decodeCompleteRecoveryRequest,
@@ -85,14 +86,17 @@ export interface IdentityHttpConfig {
   tenantId: Uint8Array;
   operations: IdentityAuthorityOperations;
   enrollmentSessions: EnrollmentSessionAuthorizer;
-  idempotency: IdempotencyCoordinator;
+  idempotency?: IdempotencyCoordinator;
 }
 
 export function createIdentityHttpServer(config: IdentityHttpConfig): Server {
   if (config.tenantId.length !== 16) throw new TypeError("tenantId must be 16 bytes");
   return createServer((request, response) => {
     void route(config, request, response).catch((error: unknown) => {
-      const status = error instanceof IdempotencyConflictError ? 409 : 400;
+      const status =
+        error instanceof IdempotencyConflictError || error instanceof StoreIdempotencyConflictError
+          ? 409
+          : 400;
       send(response, {
         status,
         body: encodeErrorResponse(status === 409 ? "IDEMPOTENCY_CONFLICT" : "REQUEST_REJECTED"),
@@ -117,11 +121,25 @@ async function route(
     }
     const key = requireIdempotencyKey(request);
     const body = await readBody(request);
-    const result = await config.idempotency.execute(`enroll:${syntheticIdentityRef}`, key, body, async () => {
-      const input = decodeEnrollmentRequest(body);
-      const enrolled = await config.operations.enroll({ ...input, syntheticIdentityRef });
-      return { status: 201, body: encodeEnrollmentResponse(enrolled), cacheControl: "no-store" };
-    });
+    const input = decodeEnrollmentRequest(body);
+    const command = { ...input, syntheticIdentityRef };
+    const result =
+      config.operations.enrollIdempotent === undefined
+        ? await requireFallbackIdempotency(config).execute(
+            `enroll:${syntheticIdentityRef}`,
+            key,
+            body,
+            async () => ({
+              status: 201,
+              body: encodeEnrollmentResponse(await config.operations.enroll(command)),
+              cacheControl: "no-store",
+            }),
+          )
+        : {
+            status: 201,
+            body: await config.operations.enrollIdempotent(command, key, body),
+            cacheControl: "no-store",
+          };
     send(response, result);
     return;
   }
@@ -136,10 +154,24 @@ async function route(
     requireCbor(request);
     const key = requireIdempotencyKey(request);
     const body = await readBody(request);
-    const result = await config.idempotency.execute("recovery-complete", key, body, async () => {
-      const recovered = await config.operations.completeRecovery(decodeCompleteRecoveryRequest(body));
-      return { status: 200, body: encodeEnrollmentResponse(recovered), cacheControl: "no-store" };
-    });
+    const command = decodeCompleteRecoveryRequest(body);
+    const result =
+      config.operations.completeRecoveryIdempotent === undefined
+        ? await requireFallbackIdempotency(config).execute(
+            "recovery-complete",
+            key,
+            body,
+            async () => ({
+              status: 200,
+              body: encodeEnrollmentResponse(await config.operations.completeRecovery(command)),
+              cacheControl: "no-store",
+            }),
+          )
+        : {
+            status: 200,
+            body: await config.operations.completeRecoveryIdempotent(command, key, body),
+            cacheControl: "no-store",
+          };
     send(response, result);
     return;
   }
@@ -165,6 +197,13 @@ async function route(
     return;
   }
   send(response, { status: 404, body: encodeErrorResponse("NOT_FOUND"), cacheControl: "no-store" });
+}
+
+function requireFallbackIdempotency(config: IdentityHttpConfig): IdempotencyCoordinator {
+  if (config.idempotency === undefined) {
+    throw new Error("an idempotency coordinator is required for operations without durable support");
+  }
+  return config.idempotency;
 }
 
 function requireCbor(request: IncomingMessage): void {

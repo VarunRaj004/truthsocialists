@@ -26,13 +26,14 @@ deltas.
 The HTTP adapter accepts only `application/cbor`, limits request bodies to 64
 KiB, requires UUIDv4 idempotency keys for enrollment and recovery completion,
 returns generic CBOR errors, and emits no request logs. The supplied in-memory
-idempotency implementation is restricted to local tests; durable transaction-
-coupled idempotency remains required for the Phase 2 exit gate.
+idempotency implementation is restricted to local tests. ADR 0009 supplies the
+durable transaction-coupled PostgreSQL implementation used by the real
+application boundary.
 
 ## Consequences
 
 - A request cannot override tenant routing or its authenticated identity.
 - Recovery signature checks cannot race an enrollment rotation.
 - Public membership synchronization does not query or serialize identity rows.
-- Deployments must provide a real session adapter and persistent idempotency
-  implementation rather than silently trusting headers.
+- Deployments must provide a real session adapter and use the persistent
+  application/store path rather than silently trusting headers.

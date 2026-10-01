@@ -13,6 +13,8 @@ The store currently provides:
   Ed25519 recovery credential, revoke the old leaf, allocate a new leaf, and
   enqueue both tree updates atomically;
 - replay protection through challenge consumption and recovery-generation checks;
+- 24-hour PostgreSQL idempotency records whose response bytes commit in the
+  same serializable transaction as enrollment or recovery completion;
 - a serializable checkpoint publisher that reconstructs and validates the full
   update history before signing each new Poseidon root;
 - a non-overlapping 30-second worker, plus current-checkpoint and paginated-delta
@@ -29,8 +31,9 @@ must provide exactly the same tenant UUID and slug.
 
 Set `TEST_DATABASE_URL` to an isolated PostgreSQL database whose name ends in
 `test`, then run `pnpm --filter @cyber-cipher/identity-store test`. The test
-resets only the `ida` schema and verifies concurrent allocation and double-submit
-recovery behavior. Without the variable, the PostgreSQL test is explicitly
+resets only the `ida` schema and verifies concurrent allocation, durable replay,
+changed-request conflicts, and double-submit recovery behavior. Without the
+variable, the PostgreSQL test is explicitly
 skipped while type checking and compilation still run.
 
 ## Checkpoint worker

@@ -59,7 +59,8 @@ Implemented so far:
 - durable 30-second membership checkpoint publication with history replay,
   signed hash chaining, ordered deltas, and non-overlapping worker execution;
 - deterministic-CBOR Identity Authority endpoints for authenticated synthetic
-  enrollment, signed recovery, current checkpoints, and paginated deltas;
+  enrollment, signed recovery, current checkpoints, and paginated deltas, with
+  transaction-coupled PostgreSQL idempotency for enrollment and recovery;
 - a client membership synchronizer that validates checkpoint signatures, hash
   chaining, tenant deltas, Poseidon roots, and active membership paths;
 - conformance tests against the published reference vectors.
