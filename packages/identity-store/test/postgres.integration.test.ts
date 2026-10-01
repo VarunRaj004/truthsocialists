@@ -1,15 +1,28 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
-import { deviceHash, personHash } from "@cyber-cipher/membership-core";
+import { verifyMembershipCheckpoint } from "@cyber-cipher/protocol-core";
+import { deviceHash, personHash, type CheckpointSigner } from "@cyber-cipher/membership-core";
 import {
   applyIdentityMigrations,
   IdentityStoreError,
+  PostgresCheckpointPublisher,
   PostgresIdentityStore,
 } from "../src/index.js";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
+
+function checkpointSigner(): CheckpointSigner {
+  const keys = generateKeyPairSync("ed25519");
+  const spki = new Uint8Array(keys.publicKey.export({ type: "spki", format: "der" }));
+  return {
+    publicKey: spki.slice(-32),
+    async sign(message: Uint8Array): Promise<Uint8Array> {
+      return new Uint8Array(sign(null, message, keys.privateKey));
+    },
+  };
+}
 
 test(
   "PostgreSQL serializes enrollment allocation and recovery rotation",
@@ -147,6 +160,29 @@ test(
         (await store.pendingUpdates()).map((update) => update.operation),
         ["ACTIVATE", "ACTIVATE", "REVOKE", "ACTIVATE"],
       );
+
+      const signer = checkpointSigner();
+      const publisher = new PostgresCheckpointPublisher(
+        pool,
+        tenantId,
+        "university-a",
+        signer,
+      );
+      const publishedAt = BigInt(Date.now());
+      const checkpoint = await publisher.publishPending(publishedAt);
+      assert.ok(checkpoint);
+      const checkpointBody = verifyMembershipCheckpoint(
+        checkpoint.signedCheckpointCbor,
+        signer.publicKey,
+        { previousCheckpointHash: new Uint8Array(32), minimumEpoch: 1n },
+      );
+      assert.equal(checkpointBody.epoch, 1n);
+      assert.equal(checkpointBody.publishedAt, publishedAt);
+      assert.equal((await store.membershipState()).currentEpoch, 1n);
+      assert.equal((await store.pendingUpdates()).length, 0);
+      assert.deepEqual((await publisher.latestCheckpoint())!.checkpointHash, checkpoint.checkpointHash);
+      assert.equal((await publisher.checkpointsAfter(0n)).length, 1);
+      assert.equal(await publisher.publishPending(publishedAt + 30_000n), undefined);
     } finally {
       await pool.end();
     }

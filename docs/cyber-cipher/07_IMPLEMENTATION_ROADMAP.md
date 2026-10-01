@@ -192,3 +192,27 @@ Do not start public UI polishing before these iterations pass their security tes
 ## 14. Completion definition
 
 A feature is complete only when its protocol/schema is versioned, positive and negative tests exist, privacy-forbidden fields are tested, logs contain no sensitive values, failure is atomic, documentation matches behavior, and the acceptance matrix traces it to an SRS requirement.
+
+## 15. Current MVP build status (2026-10-01)
+
+The TypeScript protocol core, in-memory membership/recovery model, tenant-bound
+PostgreSQL enrollment and recovery transactions, and durable 30-second signed
+membership checkpoint publisher are implemented. Phase 2 still needs service
+endpoints and client-side path/checkpoint synchronization.
+
+Eight major implementation steps remain for the experimental MVP:
+
+1. Finish Phase 2 with Identity Authority APIs, recovery-signature wiring, client
+   path updates, and checkpoint-chain verification.
+2. Build the Phase 3 matter registry and RFC 9474 RSA blind-entitlement issuance.
+3. Build and integrate the Phase 4 complaint and voting Groth16 circuits.
+4. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
+5. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
+6. Build the Phase 7 handler workflow and anonymous mailbox.
+7. Build the Phase 8 redaction, community voting, and auditor comparison flow.
+8. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
+   the MVP security and acceptance suite.
+
+Phase 9 external review and controlled-pilot hardening remains mandatory before
+any real-user or production deployment and is not counted as part of the
+experimental MVP.

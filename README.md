@@ -56,6 +56,8 @@ Implemented so far:
 - SaaS tenant registry that forbids checkpoint-key reuse and keeps tenant trust zones separately routed;
 - tenant-bound PostgreSQL identity storage with serializable enrollment allocation,
   durable recovery challenges, atomic device/recovery rotation, and old-leaf revocation;
+- durable 30-second membership checkpoint publication with history replay,
+  signed hash chaining, ordered deltas, and non-overlapping worker execution;
 - conformance tests against the published reference vectors.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),

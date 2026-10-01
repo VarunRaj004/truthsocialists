@@ -41,6 +41,13 @@ replacement with the fixed empty value, new monotonic leaf allocation, and both
 pending tree updates commit together. A stale challenge generation is rejected
 even if its signature would otherwise verify.
 
+The checkpoint worker runs immediately and on a non-overlapping 30-second
+interval. Before signing, it replays every persisted update, verifies the last
+root and checkpoint hash against the locked membership state, applies the
+ordered pending batch, and compares the result with the materialized leaf table.
+The signed checkpoint, ordered delta rows, leaf epochs, hash-chain advance, and
+pending-row deletion then commit in one serializable transaction.
+
 ## 3. Complaint database
 
 ### `matter`

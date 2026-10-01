@@ -13,6 +13,10 @@ The store currently provides:
   Ed25519 recovery credential, revoke the old leaf, allocate a new leaf, and
   enqueue both tree updates atomically;
 - replay protection through challenge consumption and recovery-generation checks;
+- a serializable checkpoint publisher that reconstructs and validates the full
+  update history before signing each new Poseidon root;
+- a non-overlapping 30-second worker, plus current-checkpoint and paginated-delta
+  reads for public API adapters;
 - a registry that resolves stores from a trusted tenant identity.
 
 ## Migration
@@ -28,3 +32,13 @@ Set `TEST_DATABASE_URL` to an isolated PostgreSQL database whose name ends in
 resets only the `ida` schema and verifies concurrent allocation and double-submit
 recovery behavior. Without the variable, the PostgreSQL test is explicitly
 skipped while type checking and compilation still run.
+
+## Checkpoint worker
+
+Create a `PostgresCheckpointPublisher` with the tenant's dedicated Ed25519
+checkpoint signer, then wrap it in `MembershipCheckpointWorker` and call
+`start(onError)`. The worker runs immediately and every 30 seconds without
+overlapping ticks. Publication locks membership state, replays persisted history,
+checks it against the last signed root and current leaf table, signs the next
+checkpoint, persists its ordered delta, advances the hash chain, and removes the
+published queue entries in one serializable transaction.
