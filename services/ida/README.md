@@ -1,7 +1,8 @@
 # Identity Authority service
 
 `@cyber-cipher/ida-service` is the tenant-bound application and HTTP boundary for
-prototype enrollment, recovery, and public membership synchronization. It uses
+prototype enrollment, recovery, blind entitlement issuance, and public
+cryptographic-metadata synchronization. It uses
 Node's HTTP server directly and introduces no web-framework dependency.
 
 ## Implemented routes
@@ -9,11 +10,13 @@ Node's HTTP server directly and introduces no web-framework dependency.
 - `POST /ida/v1/enrollments`
 - `POST /ida/v1/recovery/challenges`
 - `POST /ida/v1/recovery/complete`
+- `POST /ida/v1/matters/{matterId}/{matterVersion}/blind-issuance`
+- `GET /public/v1/matters`
 - `GET /public/v1/membership/checkpoints/current`
 - `GET /public/v1/membership/deltas?afterEpoch=0&limit=100`
 
 All bodies and successful responses are deterministic CBOR. Write bodies are
-limited to 64 KiB. Enrollment and recovery completion require a UUIDv4
+limited to 64 KiB. Enrollment, recovery completion, and blind issuance require a UUIDv4
 `Idempotency-Key`. Error bodies contain only a stable generic code.
 
 Enrollment does not accept an identity field. An injected
@@ -48,6 +51,14 @@ operations. The request hash, exact response CBOR, and state mutation commit in
 one serializable transaction; a committed retry therefore returns the original
 bytes without allocating another leaf or consuming a challenge twice. Enrollment
 hashes bind the authenticated synthetic identity as well as the request body.
+
+`BlindEntitlementIssuanceApplication` accepts only the RFC 9474 blinded
+representative. It resolves immutable public matter metadata, checks that the
+matter is published/open and the key fingerprint matches, then asks the
+identity store to secure the unique issuance row before signing. Its request
+hash binds the authenticated subject and matter path. Decrypted private-key
+bytes are overwritten in a `finally` block, while the client retains all
+unblinding state and verifies the final token locally.
 
 `InMemoryIdempotencyCoordinator` remains available only as a fallback for local
 tests and fake operations that do not implement the durable methods. It must not

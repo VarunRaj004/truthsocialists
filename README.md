@@ -64,7 +64,10 @@ Implemented so far:
 - tenant-bound Ed25519 institutional-session tokens with issuer, audience,
   lifetime, session-ID, and synthetic-subject validation;
 - tenant-bound matter publication with immutable UUID/version metadata,
-  RSA-3072/PSS profile enforcement, 24-hour lead time, and encrypted PKCS#8 envelopes;
+  RSA-3072 enforcement, 24-hour lead time, and encrypted PKCS#8 envelopes;
+- RFC 9474 randomized blind-entitlement issuance with local final verification,
+  one issuance fact per enrolled person/matter version, public matter discovery,
+  and evidence-bearing post-close key retirement;
 - a client membership synchronizer that validates checkpoint signatures, hash
   chaining, tenant deltas, Poseidon roots, and active membership paths;
 - conformance tests against the published reference vectors.

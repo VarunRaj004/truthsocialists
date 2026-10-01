@@ -8,9 +8,12 @@ import type { PersistentEnrollment } from "@cyber-cipher/identity-store";
 import {
   InMemoryIdempotencyCoordinator,
   createIdentityHttpServer,
+  decodeBlindIssuanceResponse,
+  encodeBlindIssuanceResponse,
   type EnrollmentCommand,
   type IdentityAuthorityOperations,
 } from "../src/index.js";
+import type { PublishedMatter } from "@cyber-cipher/matter-registry";
 
 test("HTTP enrollment takes identity from the trusted session and replays identical idempotent requests", async () => {
   let calls = 0;
@@ -200,6 +203,96 @@ test("HTTP enrollment rejects absent identified sessions before reading enrollme
       body: Buffer.from([0xa0]),
     });
     assert.equal(response.status, 401);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("HTTP exposes public matter metadata and binds blind issuance to the identified session", async () => {
+  const matterId = randomUUID();
+  const matterKeyId = new Uint8Array(32).fill(0x61);
+  const blindSignature = new Uint8Array(384).fill(0x62);
+  const matter: PublishedMatter = {
+    matterId,
+    version: 1,
+    title: "Public safety matter",
+    opensAt: new Date("2026-10-02T00:00:00.000Z"),
+    closesAt: new Date("2026-10-03T00:00:00.000Z"),
+    publishedAt: new Date("2026-10-01T00:00:00.000Z"),
+    rsaSpkiDer: new Uint8Array([0x30]),
+    matterKeyId,
+    complaintArtifactId: new Uint8Array(32).fill(0x63),
+    voteArtifactId: new Uint8Array(32).fill(0x64),
+    handlerOrgId: randomUUID(),
+    handlerKeyId: new Uint8Array(32).fill(0x65),
+    state: "PUBLISHED",
+  };
+  let receivedSubject: string | undefined;
+  const operations: IdentityAuthorityOperations = {
+    async enroll() { throw new Error("not used"); },
+    async issueRecoveryChallenge() { throw new Error("not used"); },
+    async completeRecovery() { throw new Error("not used"); },
+    async currentCheckpoint() { return undefined; },
+    async checkpointDeltas() { return []; },
+  };
+  const server = createIdentityHttpServer({
+    tenantId: new Uint8Array(16).fill(0x60),
+    operations,
+    enrollmentSessions: {
+      async syntheticIdentityFor() {
+        return "synthetic:student-http";
+      },
+    },
+    blindIssuance: {
+      async issueIdempotent(command) {
+        receivedSubject = command.syntheticIdentityRef;
+        assert.equal(command.matterId, matterId);
+        assert.equal(command.matterVersion, 1);
+        assert.deepEqual(command.matterKeyId, matterKeyId);
+        return encodeBlindIssuanceResponse({
+          matterId,
+          matterVersion: 1,
+          matterKeyId,
+          blindSignature,
+        });
+      },
+    },
+    matters: {
+      async publicMatter() { return matter; },
+      async listPublic() { return [matter]; },
+    },
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const address = server.address() as AddressInfo;
+    const base = `http://127.0.0.1:${address.port}`;
+    const publicResponse = await fetch(`${base}/public/v1/matters`);
+    assert.equal(publicResponse.status, 200);
+    const publicCbor = decodeCanonical(new Uint8Array(await publicResponse.arrayBuffer()));
+    assert.ok(publicCbor instanceof Map);
+
+    const issuanceBody = encodeCanonical(
+      integerMap([[1, matterKeyId], [2, new Uint8Array(384).fill(0x66)]]),
+    );
+    const issuanceResponse = await fetch(
+      `${base}/ida/v1/matters/${matterId}/1/blind-issuance`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/cbor",
+          "idempotency-key": randomUUID(),
+        },
+        body: Buffer.from(issuanceBody),
+      },
+    );
+    assert.equal(issuanceResponse.status, 201);
+    assert.deepEqual(
+      decodeBlindIssuanceResponse(new Uint8Array(await issuanceResponse.arrayBuffer())).blindSignature,
+      blindSignature,
+    );
+    assert.equal(receivedSubject, "synthetic:student-http");
   } finally {
     server.close();
     await once(server, "close");

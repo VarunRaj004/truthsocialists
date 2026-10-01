@@ -5,7 +5,7 @@
   "description": "Cyber Cipher anonymous complaint platform",
   "packageManager": "pnpm@11.19.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "build": "pnpm -r build",

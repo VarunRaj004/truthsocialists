@@ -14,14 +14,14 @@ function uuidBytes(uuid: string): Uint8Array {
   return new Uint8Array(Buffer.from(uuid.replaceAll("-", ""), "hex"));
 }
 
-test("matter RSA key fixes the RSA-3072 RSABSSA-SHA384-PSS profile", () => {
+test("matter RSA key fixes the RSA-3072 public-key profile used by the RFC 9474 suite", () => {
   const key = generateMatterRsaKeyMaterial();
   assert.equal(key.matterKeyId.length, 32);
   assert.deepEqual(validateMatterPublicKey(key.publicKeySpkiDer), key.matterKeyId);
 
-  const ordinaryRsa = generateKeyPairSync("rsa", { modulusLength: 2048, publicExponent: 65_537 });
-  const ordinarySpki = new Uint8Array(ordinaryRsa.publicKey.export({ format: "der", type: "spki" }));
-  assert.throws(() => validateMatterPublicKey(ordinarySpki), /RSASSA-PSS/);
+  const undersizedRsa = generateKeyPairSync("rsa", { modulusLength: 2048, publicExponent: 65_537 });
+  const undersizedSpki = new Uint8Array(undersizedRsa.publicKey.export({ format: "der", type: "spki" }));
+  assert.throws(() => validateMatterPublicKey(undersizedSpki), /RSA-3072/);
 });
 
 test("matter PKCS#8 envelope authenticates tenant, version, key IDs, and ciphertext", () => {

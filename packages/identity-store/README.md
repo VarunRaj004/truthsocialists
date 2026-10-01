@@ -15,6 +15,9 @@ The store currently provides:
 - replay protection through challenge consumption and recovery-generation checks;
 - 24-hour PostgreSQL idempotency records whose response bytes commit in the
   same serializable transaction as enrollment or recovery completion;
+- a minimal, unique issuance fact per enrollment/matter version, committed
+  atomically with the blind-signature response and containing no blind protocol
+  value, entitlement serial, commitment, or signature;
 - a serializable checkpoint publisher that reconstructs and validates the full
   update history before signing each new Poseidon root;
 - a non-overlapping 30-second worker, plus current-checkpoint and paginated-delta

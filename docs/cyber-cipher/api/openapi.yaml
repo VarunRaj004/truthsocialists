@@ -70,10 +70,8 @@ paths:
         '200':
           description: Published matter versions and cryptographic metadata.
           content:
-            application/json:
-              schema:
-                type: array
-                items: {$ref: '#/components/schemas/Matter'}
+            application/cbor:
+              schema: {type: string, contentEncoding: base64}
   /public/v1/membership/checkpoints/current:
     get:
       operationId: getCurrentMembershipCheckpoint

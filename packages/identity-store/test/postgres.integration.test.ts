@@ -111,6 +111,51 @@ test(
         IdempotencyConflictError,
       );
 
+      const issuanceKey = randomUUID();
+      const issuanceHash = sha256(new Uint8Array([0x21, 0x22]));
+      const issuanceInput = {
+        syntheticIdentityRef: firstInput.syntheticIdentityRef,
+        matterId: randomUUID(),
+        matterVersion: 1,
+        matterKeyId: new Uint8Array(32).fill(0x31),
+        sign: async () => new Uint8Array(384).fill(0x32),
+      };
+      const encodeIssuance = (signature: Uint8Array) =>
+        encodeCanonical(integerMap([[1, signature]]));
+      const issued = await store.issueBlindEntitlementIdempotent(issuanceInput, {
+        scope: "blind-issuance",
+        key: issuanceKey,
+        requestHash: issuanceHash,
+        encodeResponse: encodeIssuance,
+      });
+      assert.equal(issued.replayed, false);
+      const issuanceReplay = await store.issueBlindEntitlementIdempotent(issuanceInput, {
+        scope: "blind-issuance",
+        key: issuanceKey,
+        requestHash: issuanceHash,
+        encodeResponse: encodeIssuance,
+      });
+      assert.equal(issuanceReplay.replayed, true);
+      assert.deepEqual(issuanceReplay.responseCbor, issued.responseCbor);
+      await assert.rejects(
+        store.issueBlindEntitlementIdempotent(issuanceInput, {
+          scope: "blind-issuance",
+          key: randomUUID(),
+          requestHash: issuanceHash,
+          encodeResponse: encodeIssuance,
+        }),
+        (error: unknown) =>
+          error instanceof IdentityStoreError && error.code === "ALREADY_ISSUED",
+      );
+      const issuanceColumns = await pool.query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'ida' AND table_name = 'matter_issuance'`,
+      );
+      assert.deepEqual(
+        issuanceColumns.rows.map((row) => row.column_name).sort(),
+        ["completed_at", "enrollment_id", "matter_id", "matter_version"],
+      );
+
       const wrongTenant = new PostgresIdentityStore(pool, {
         tenantId: "22222222-2222-4222-8222-222222222222",
         tenantSlug: "university-b",

@@ -23,7 +23,6 @@ import {
 const UINT32_MAX = 0xffff_ffffn;
 const RSA_BITS = 3072;
 const RSA_EXPONENT = 65_537n;
-const PSS_SALT_BYTES = 48;
 
 export interface MatterRsaKeyMaterial {
   matterKeyId: Uint8Array;
@@ -54,20 +53,17 @@ function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function assertRsaPssProfile(key: KeyObject): void {
-  if (key.asymmetricKeyType !== "rsa-pss") {
-    throw new TypeError("matter key must use an RSASSA-PSS SubjectPublicKeyInfo");
+function assertRsaProfile(key: KeyObject): void {
+  if (key.asymmetricKeyType !== "rsa") {
+    throw new TypeError("matter key must use an RSA SubjectPublicKeyInfo");
   }
   const details = key.asymmetricKeyDetails;
   if (
     details?.modulusLength !== RSA_BITS ||
-    details.publicExponent !== RSA_EXPONENT ||
-    details.hashAlgorithm !== "sha384" ||
-    details.mgf1HashAlgorithm !== "sha384" ||
-    details.saltLength !== PSS_SALT_BYTES
+    details.publicExponent !== RSA_EXPONENT
   ) {
     throw new TypeError(
-      "matter key must be RSA-3072/PSS with exponent 65537, SHA-384, MGF1-SHA384, and 48-byte salt",
+      "matter key must be RSA-3072 with exponent 65537",
     );
   }
 }
@@ -77,7 +73,7 @@ export function validateMatterPublicKey(publicKeySpkiDer: Uint8Array): Uint8Arra
     throw new TypeError("matter public key SPKI must not be empty");
   }
   const key = createPublicKey({ key: Buffer.from(publicKeySpkiDer), format: "der", type: "spki" });
-  assertRsaPssProfile(key);
+  assertRsaProfile(key);
   const canonical = new Uint8Array(key.export({ format: "der", type: "spki" }));
   if (!equalBytes(canonical, publicKeySpkiDer)) {
     throw new TypeError("matter public key SPKI is not canonical DER");
@@ -86,16 +82,14 @@ export function validateMatterPublicKey(publicKeySpkiDer: Uint8Array): Uint8Arra
 }
 
 export function generateMatterRsaKeyMaterial(): MatterRsaKeyMaterial {
-  // Node supports rsa-pss here; the current @types/node overload omits it.
-  const algorithm = "rsa-pss" as "rsa";
   const options = {
     modulusLength: RSA_BITS,
     publicExponent: Number(RSA_EXPONENT),
-    hashAlgorithm: "sha384",
-    mgf1HashAlgorithm: "sha384",
-    saltLength: PSS_SALT_BYTES,
   };
-  const pair = generateKeyPairSync(algorithm, options);
+  // The generic RSA encoding is required by RFC 9474's raw-RSA operations.
+  // SHA-384, MGF1-SHA384, and the 48-byte salt are fixed by the selected
+  // RSABSSA-SHA384-PSS-Randomized suite, rather than embedded in the key DER.
+  const pair = generateKeyPairSync("rsa", options);
   const publicKeySpkiDer = new Uint8Array(pair.publicKey.export({ format: "der", type: "spki" }));
   const privateKeyPkcs8Der = new Uint8Array(pair.privateKey.export({ format: "der", type: "pkcs8" }));
   return {
@@ -124,13 +118,13 @@ function keyAad(context: MatterKeyContext): Uint8Array {
   );
 }
 
-function privateKeyId(privateKeyPkcs8Der: Uint8Array): Uint8Array {
+export function validateMatterPrivateKey(privateKeyPkcs8Der: Uint8Array): Uint8Array {
   const privateKey = createPrivateKey({
     key: Buffer.from(privateKeyPkcs8Der),
     format: "der",
     type: "pkcs8",
   });
-  assertRsaPssProfile(privateKey);
+  assertRsaProfile(privateKey);
   const publicKey = createPublicKey(privateKey);
   const spki = new Uint8Array(publicKey.export({ format: "der", type: "spki" }));
   return validateMatterPublicKey(spki);
@@ -138,7 +132,7 @@ function privateKeyId(privateKeyPkcs8Der: Uint8Array): Uint8Array {
 
 export function encryptMatterPrivateKey(input: EncryptMatterPrivateKeyInput): Uint8Array {
   assertBytesLength("secret-manager KEK", input.kek, 32);
-  if (!equalBytes(privateKeyId(input.privateKeyPkcs8Der), input.matterKeyId)) {
+  if (!equalBytes(validateMatterPrivateKey(input.privateKeyPkcs8Der), input.matterKeyId)) {
     throw new Error("private key does not match matterKeyId");
   }
   const nonce = input.nonce ?? new Uint8Array(randomBytes(12));
@@ -186,7 +180,7 @@ export function decryptMatterPrivateKey(input: DecryptMatterPrivateKeyInput): Ui
     tag: bytes(decoded, 6n, 16, "encrypted matter-key tag"),
     aad: keyAad(input),
   });
-  if (!equalBytes(privateKeyId(plaintext), input.matterKeyId)) {
+  if (!equalBytes(validateMatterPrivateKey(plaintext), input.matterKeyId)) {
     throw new Error("decrypted private key does not match matterKeyId");
   }
   return plaintext;

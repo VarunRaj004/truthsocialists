@@ -8,6 +8,7 @@ import {
   type CborValue,
 } from "@cyber-cipher/protocol-core";
 import type { CheckpointBundle, PersistentEnrollment } from "@cyber-cipher/identity-store";
+import type { PublishedMatter } from "@cyber-cipher/matter-registry";
 import type { CompleteRecoveryCommand, EnrollmentCommand, RecoveryChallengeResult } from "./application.js";
 
 function mapValue(encoded: Uint8Array, keys: readonly bigint[]): Map<CborKey, CborValue> {
@@ -28,6 +29,16 @@ function text(map: Map<CborKey, CborValue>, key: bigint, name: string): string {
   const value = map.get(key);
   if (typeof value !== "string") throw new TypeError(`${name} must be text`);
   return value;
+}
+
+function uint(map: Map<CborKey, CborValue>, key: bigint, name: string): bigint {
+  const value = map.get(key);
+  if (typeof value !== "bigint" || value < 0n) throw new TypeError(`${name} must be unsigned`);
+  return value;
+}
+
+function uuidBytes(uuid: string): Uint8Array {
+  return new Uint8Array(Buffer.from(uuid.replaceAll("-", ""), "hex"));
 }
 
 export interface EnrollmentWireInput extends Omit<EnrollmentCommand, "syntheticIdentityRef"> {}
@@ -56,6 +67,83 @@ export function decodeCompleteRecoveryRequest(encoded: Uint8Array): CompleteReco
     newRecoveryId: bytes(map, 4n, 16, "newRecoveryId"),
     newRecoveryPublicKey: bytes(map, 5n, 32, "newRecoveryPublicKey"),
   };
+}
+
+export interface BlindIssuanceWireInput {
+  matterKeyId: Uint8Array;
+  blindedMessage: Uint8Array;
+}
+
+export function decodeBlindIssuanceRequest(encoded: Uint8Array): BlindIssuanceWireInput {
+  const map = mapValue(encoded, [1n, 2n]);
+  return {
+    matterKeyId: bytes(map, 1n, 32, "matterKeyId"),
+    blindedMessage: bytes(map, 2n, 384, "blindedMessage"),
+  };
+}
+
+export interface BlindIssuanceWireResponse {
+  matterId: string;
+  matterVersion: number;
+  matterKeyId: Uint8Array;
+  blindSignature: Uint8Array;
+}
+
+export function encodeBlindIssuanceResponse(value: BlindIssuanceWireResponse): Uint8Array {
+  return encodeCanonical(
+    integerMap([
+      [1, 1n],
+      [2, uuidBytes(value.matterId)],
+      [3, BigInt(value.matterVersion)],
+      [4, value.matterKeyId],
+      [5, value.blindSignature],
+    ]),
+  );
+}
+
+export function decodeBlindIssuanceResponse(encoded: Uint8Array): BlindIssuanceWireResponse {
+  const map = mapValue(encoded, [1n, 2n, 3n, 4n, 5n]);
+  if (map.get(1n) !== 1n) throw new Error("unsupported blind-issuance response version");
+  const matterId = Buffer.from(bytes(map, 2n, 16, "matterId")).toString("hex");
+  const matterVersion = uint(map, 3n, "matterVersion");
+  if (matterVersion > 0xffff_ffffn) throw new RangeError("matterVersion is too large");
+  return {
+    matterId: `${matterId.slice(0, 8)}-${matterId.slice(8, 12)}-${matterId.slice(12, 16)}-${matterId.slice(16, 20)}-${matterId.slice(20)}`,
+    matterVersion: Number(matterVersion),
+    matterKeyId: bytes(map, 4n, 32, "matterKeyId"),
+    blindSignature: bytes(map, 5n, 384, "blindSignature"),
+  };
+}
+
+const MATTER_STATE: Record<PublishedMatter["state"], bigint> = {
+  PUBLISHED: 1n,
+  OPEN: 2n,
+  CLOSED: 3n,
+  RETIRED: 4n,
+};
+
+export function encodePublicMattersResponse(matters: readonly PublishedMatter[]): Uint8Array {
+  const entries = matters.map((matter) => {
+    const fields: [number, CborValue][] = [
+      [1, uuidBytes(matter.matterId)],
+      [2, BigInt(matter.version)],
+      [3, matter.title],
+      [4, BigInt(matter.opensAt.getTime())],
+      [5, BigInt(matter.closesAt.getTime())],
+      [6, BigInt(matter.publishedAt.getTime())],
+      [7, matter.matterKeyId],
+      [8, matter.rsaSpkiDer],
+      [9, matter.complaintArtifactId],
+      [10, matter.voteArtifactId],
+      [11, uuidBytes(matter.handlerOrgId)],
+      [12, matter.handlerKeyId],
+      [13, MATTER_STATE[matter.state]],
+    ];
+    if (matter.retiredAt !== undefined) fields.push([14, BigInt(matter.retiredAt.getTime())]);
+    if (matter.retirementEvidence !== undefined) fields.push([15, matter.retirementEvidence]);
+    return integerMap(fields);
+  });
+  return encodeCanonical(integerMap([[1, 1n], [2, entries as readonly CborValue[]]]));
 }
 
 function bytesVariable(map: Map<CborKey, CborValue>, key: bigint, name: string): Uint8Array {

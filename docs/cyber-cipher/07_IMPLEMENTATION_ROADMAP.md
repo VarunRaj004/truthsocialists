@@ -204,21 +204,26 @@ updates are also implemented. Durable transaction-coupled API idempotency, the
 signed institutional-session adapter, and an end-to-end enrollment/recovery
 PostgreSQL/API/checkpoint/client demonstration complete the Phase 2 slice.
 
-Phase 3 now has its matter-registry foundation: strict RSA-3072/PSS public-key
-profile validation, SHA-256 `matterKeyId`, AES-256-GCM PKCS#8 envelopes,
-tenant-bound PostgreSQL publication, sequential immutable versions, the 24-hour
-lead-time rule, and public lifecycle derivation. RFC 9474 blinding, atomic
-one-per-matter issuance, and private-key retirement automation remain next.
+Phase 3 is implemented. It includes RSA-3072 key validation, SHA-256
+`matterKeyId`, AES-256-GCM PKCS#8 envelopes, tenant-bound PostgreSQL
+publication, sequential immutable versions, the 24-hour lead-time rule, and
+public lifecycle metadata. The client and IdA now complete RFC 9474
+`RSABSSA-SHA384-PSS-Randomized`; issuance is transactionally limited to one
+fact per enrollment/matter version without retaining blind protocol values.
+The close/retire worker destroys key material before publishing a 32-byte
+destruction-evidence digest. HTTP and cryptographic tests cover the complete
+identified-session-to-locally-verified-token path and fail closed on key,
+matter-window, and message changes. The exact pinned blind-RSA release also
+passes its 98-test upstream suite, including the RFC 9474 vectors.
 
-Seven major implementation steps remain for the experimental MVP:
+Six major implementation steps remain for the experimental MVP:
 
-1. Build the Phase 3 matter registry and RFC 9474 RSA blind-entitlement issuance.
-2. Build and integrate the Phase 4 complaint and voting Groth16 circuits.
-3. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
-4. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
-5. Build the Phase 7 handler workflow and anonymous mailbox.
-6. Build the Phase 8 redaction, community voting, and auditor comparison flow.
-7. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
+1. Build and integrate the Phase 4 complaint and voting Groth16 circuits.
+2. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
+3. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
+4. Build the Phase 7 handler workflow and anonymous mailbox.
+5. Build the Phase 8 redaction, community voting, and auditor comparison flow.
+6. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
    the MVP security and acceptance suite.
 
 Phase 9 external review and controlled-pilot hardening remains mandatory before

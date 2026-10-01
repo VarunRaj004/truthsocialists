@@ -12,7 +12,7 @@
   },
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "prebuild": "pnpm --filter @cyber-cipher/protocol-core build && pnpm --filter @cyber-cipher/membership-core build && pnpm --filter @cyber-cipher/identity-store build",
+    "prebuild": "pnpm --filter @cyber-cipher/protocol-core build && pnpm --filter @cyber-cipher/membership-core build && pnpm --filter @cyber-cipher/identity-store build && pnpm --filter @cyber-cipher/matter-registry build",
     "build": "pnpm run clean && tsc -p tsconfig.json",
     "test": "pnpm run build && node --test dist/test/*.test.js",
     "precheck": "pnpm run prebuild",
@@ -21,6 +21,7 @@
   "dependencies": {
     "@cyber-cipher/identity-store": "workspace:*",
     "@cyber-cipher/membership-core": "workspace:*",
+    "@cyber-cipher/matter-registry": "workspace:*",
     "@cyber-cipher/protocol-core": "workspace:*"
   },
   "devDependencies": {

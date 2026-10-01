@@ -45,6 +45,7 @@ export interface PublishedMatter {
   handlerOrgId: string;
   handlerKeyId: Uint8Array;
   retiredAt?: Date;
+  retirementEvidence?: Uint8Array;
   state: MatterState;
 }
 
@@ -62,6 +63,7 @@ interface MatterRow {
   handler_org_id: string;
   handler_key_id: Buffer;
   retired_at: Date | null;
+  retirement_evidence: Buffer | null;
 }
 
 export class MatterRegistryError extends Error {
@@ -163,7 +165,11 @@ function fromRow(row: MatterRow, at: Date): PublishedMatter {
     handlerKeyId: new Uint8Array(row.handler_key_id),
     state: stateAt(row, at),
   };
-  return row.retired_at === null ? base : { ...base, retiredAt: new Date(row.retired_at) };
+  if (row.retired_at === null) return base;
+  const retired = { ...base, retiredAt: new Date(row.retired_at) };
+  return row.retirement_evidence === null
+    ? retired
+    : { ...retired, retirementEvidence: new Uint8Array(row.retirement_evidence) };
 }
 
 function isSerializationFailure(error: unknown): boolean {
@@ -239,8 +245,8 @@ export class PostgresMatterRegistry {
     });
   }
 
-  async listPublic(at = new Date()): Promise<PublishedMatter[]> {
-    const trustedAt = assertDate("at", at);
+  async listPublic(at?: Date): Promise<PublishedMatter[]> {
+    const trustedAt = assertDate("at", at ?? this.now());
     const client = await this.pool.connect();
     try {
       await this.assertTenant(client);
@@ -256,12 +262,59 @@ export class PostgresMatterRegistry {
     }
   }
 
-  async retire(matterId: string, version: number, retiredAt = new Date()): Promise<PublishedMatter> {
+  async publicMatter(
+    matterId: string,
+    version: number,
+    at?: Date,
+  ): Promise<PublishedMatter | undefined> {
+    const trustedMatterId = assertUuid("matterId", matterId, true);
+    if (!Number.isSafeInteger(version) || version < 1 || version > MAX_VERSION) {
+      throw new RangeError("matter version is invalid");
+    }
+    const trustedAt = assertDate("at", at ?? this.now());
+    const client = await this.pool.connect();
+    try {
+      await this.assertTenant(client);
+      const result = await client.query<MatterRow>(
+        `SELECT * FROM matter_registry.matter
+         WHERE matter_id = $1::uuid AND version = $2 AND published_at <= $3`,
+        [trustedMatterId, version, trustedAt],
+      );
+      return result.rows[0] === undefined ? undefined : fromRow(result.rows[0], trustedAt);
+    } finally {
+      client.release();
+    }
+  }
+
+  async retirementCandidates(at?: Date): Promise<PublishedMatter[]> {
+    const trustedAt = assertDate("at", at ?? this.now());
+    const client = await this.pool.connect();
+    try {
+      await this.assertTenant(client);
+      const result = await client.query<MatterRow>(
+        `SELECT * FROM matter_registry.matter
+         WHERE closes_at <= $1 AND retired_at IS NULL
+         ORDER BY closes_at, matter_id, version`,
+        [trustedAt],
+      );
+      return result.rows.map((row) => fromRow(row, trustedAt));
+    } finally {
+      client.release();
+    }
+  }
+
+  async retire(
+    matterId: string,
+    version: number,
+    retirementEvidence: Uint8Array,
+    retiredAt = new Date(),
+  ): Promise<PublishedMatter> {
     const trustedMatterId = assertUuid("matterId", matterId, true);
     if (!Number.isSafeInteger(version) || version < 1 || version > MAX_VERSION) {
       throw new RangeError("matter version is invalid");
     }
     const trustedRetiredAt = assertDate("retiredAt", retiredAt);
+    assertBytesLength("retirementEvidence", retirementEvidence, 32);
     return this.serializable(async (client) => {
       await this.assertTenant(client);
       const current = await client.query<MatterRow>(
@@ -279,10 +332,10 @@ export class PostgresMatterRegistry {
       }
       if (row.retired_at !== null) return fromRow(row, trustedRetiredAt);
       const updated = await client.query<MatterRow>(
-        `UPDATE matter_registry.matter SET retired_at = $3
+        `UPDATE matter_registry.matter SET retired_at = $3, retirement_evidence = $4
          WHERE matter_id = $1::uuid AND version = $2
          RETURNING *`,
-        [trustedMatterId, version, trustedRetiredAt],
+        [trustedMatterId, version, trustedRetiredAt, Buffer.from(retirementEvidence)],
       );
       return fromRow(updated.rows[0]!, trustedRetiredAt);
     });

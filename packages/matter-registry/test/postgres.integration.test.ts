@@ -63,12 +63,23 @@ test(
       );
 
       await assert.rejects(
-        registry.retire(matterId, 1, new Date("2026-10-03T23:59:59.999Z")),
+        registry.retire(
+          matterId,
+          1,
+          new Uint8Array(32).fill(0x41),
+          new Date("2026-10-03T23:59:59.999Z"),
+        ),
         (error: unknown) =>
           error instanceof MatterRegistryError && error.code === "MATTER_NOT_CLOSED",
       );
-      const retired = await registry.retire(matterId, 1, new Date("2026-10-04T00:00:00.000Z"));
+      const retired = await registry.retire(
+        matterId,
+        1,
+        new Uint8Array(32).fill(0x41),
+        new Date("2026-10-04T00:00:00.000Z"),
+      );
       assert.equal(retired.state, "RETIRED");
+      assert.deepEqual(retired.retirementEvidence, new Uint8Array(32).fill(0x41));
 
       const wrongTenant = new PostgresMatterRegistry(pool, {
         tenantId: "22222222-2222-4222-8222-222222222222",

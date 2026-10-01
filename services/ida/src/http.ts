@@ -1,19 +1,29 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { sha256 } from "@cyber-cipher/protocol-core";
-import { IdempotencyConflictError as StoreIdempotencyConflictError } from "@cyber-cipher/identity-store";
-import type { IdentityAuthorityOperations } from "./application.js";
 import {
+  IdempotencyConflictError as StoreIdempotencyConflictError,
+  IdentityStoreError,
+} from "@cyber-cipher/identity-store";
+import type { IdentityAuthorityOperations } from "./application.js";
+import type {
+  BlindEntitlementIssuanceOperations,
+  PublicMatterRepository,
+} from "./issuance.js";
+import {
+  decodeBlindIssuanceRequest,
   decodeCompleteRecoveryRequest,
   decodeEnrollmentRequest,
   decodeRecoveryChallengeRequest,
   encodeCheckpointDeltasResponse,
   encodeEnrollmentResponse,
   encodeErrorResponse,
+  encodePublicMattersResponse,
   encodeRecoveryChallengeResponse,
 } from "./wire.js";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const BLIND_ISSUANCE_PATH = /^\/ida\/v1\/matters\/([0-9a-f-]{36})\/([1-9][0-9]*)\/blind-issuance$/i;
 
 export interface EnrollmentSessionAuthorizer {
   syntheticIdentityFor(request: IncomingMessage): Promise<string | undefined>;
@@ -86,6 +96,8 @@ export interface IdentityHttpConfig {
   tenantId: Uint8Array;
   operations: IdentityAuthorityOperations;
   enrollmentSessions: EnrollmentSessionAuthorizer;
+  blindIssuance?: BlindEntitlementIssuanceOperations;
+  matters?: PublicMatterRepository;
   idempotency?: IdempotencyCoordinator;
 }
 
@@ -96,10 +108,18 @@ export function createIdentityHttpServer(config: IdentityHttpConfig): Server {
       const status =
         error instanceof IdempotencyConflictError || error instanceof StoreIdempotencyConflictError
           ? 409
+          : error instanceof IdentityStoreError && error.code === "ALREADY_ISSUED"
+            ? 409
           : 400;
       send(response, {
         status,
-        body: encodeErrorResponse(status === 409 ? "IDEMPOTENCY_CONFLICT" : "REQUEST_REJECTED"),
+        body: encodeErrorResponse(
+          error instanceof IdentityStoreError && error.code === "ALREADY_ISSUED"
+            ? "ENTITLEMENT_ALREADY_ISSUED"
+            : status === 409
+              ? "IDEMPOTENCY_CONFLICT"
+              : "REQUEST_REJECTED",
+        ),
         cacheControl: "no-store",
       });
     });
@@ -112,6 +132,7 @@ async function route(
   response: ServerResponse,
 ): Promise<void> {
   const url = new URL(request.url ?? "/", "http://ida.invalid");
+  const issuanceMatch = BLIND_ISSUANCE_PATH.exec(url.pathname);
   if (request.method === "POST" && url.pathname === "/ida/v1/enrollments") {
     requireCbor(request);
     const syntheticIdentityRef = await config.enrollmentSessions.syntheticIdentityFor(request);
@@ -141,6 +162,34 @@ async function route(
             cacheControl: "no-store",
           };
     send(response, result);
+    return;
+  }
+  if (request.method === "POST" && issuanceMatch !== null) {
+    if (config.blindIssuance === undefined) {
+      send(response, { status: 404, body: encodeErrorResponse("NOT_FOUND"), cacheControl: "no-store" });
+      return;
+    }
+    requireCbor(request);
+    const syntheticIdentityRef = await config.enrollmentSessions.syntheticIdentityFor(request);
+    if (syntheticIdentityRef === undefined) {
+      send(response, { status: 401, body: encodeErrorResponse("AUTHENTICATION_REQUIRED"), cacheControl: "no-store" });
+      return;
+    }
+    const matterId = issuanceMatch[1]!;
+    if (!UUID_V4.test(matterId)) throw new TypeError("matterId must be a UUIDv4");
+    const matterVersion = Number(parseUint(issuanceMatch[2]!, "matterVersion"));
+    if (!Number.isSafeInteger(matterVersion) || matterVersion > 0xffff_ffff) {
+      throw new RangeError("matterVersion is invalid");
+    }
+    const key = requireIdempotencyKey(request);
+    const body = await readBody(request);
+    const wire = decodeBlindIssuanceRequest(body);
+    const responseBody = await config.blindIssuance.issueIdempotent(
+      { ...wire, syntheticIdentityRef, matterId, matterVersion },
+      key,
+      body,
+    );
+    send(response, { status: 201, body: responseBody, cacheControl: "no-store" });
     return;
   }
   if (request.method === "POST" && url.pathname === "/ida/v1/recovery/challenges") {
@@ -182,6 +231,18 @@ async function route(
       return;
     }
     send(response, { status: 200, body: checkpoint.signedCheckpointCbor, cacheControl: "public, max-age=30" });
+    return;
+  }
+  if (request.method === "GET" && url.pathname === "/public/v1/matters") {
+    if (config.matters === undefined) {
+      send(response, { status: 404, body: encodeErrorResponse("NOT_FOUND"), cacheControl: "no-store" });
+      return;
+    }
+    send(response, {
+      status: 200,
+      body: encodePublicMattersResponse(await config.matters.listPublic()),
+      cacheControl: "public, max-age=30",
+    });
     return;
   }
   if (request.method === "GET" && url.pathname === "/public/v1/membership/deltas") {

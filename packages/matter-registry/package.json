@@ -23,10 +23,12 @@
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@cloudflare/blindrsa-ts": "0.4.6",
     "@cyber-cipher/protocol-core": "workspace:*",
     "pg": "8.23.0"
   },
   "devDependencies": {
+    "@cyber-cipher/membership-core": "workspace:*",
     "@types/pg": "8.23.1"
   }
 }

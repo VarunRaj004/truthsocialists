@@ -19,7 +19,9 @@ export type IdentityStoreErrorCode =
   | "CHALLENGE_EXPIRED"
   | "ATTEMPT_LIMIT"
   | "AUTHORIZATION_REJECTED"
-  | "STALE_RECOVERY_GENERATION";
+  | "STALE_RECOVERY_GENERATION"
+  | "ENROLLMENT_NOT_AVAILABLE"
+  | "ALREADY_ISSUED";
 
 export class IdentityStoreError extends Error {
   constructor(
@@ -92,7 +94,16 @@ export interface CompleteRecoveryTransactionInput {
   authorize(locked: LockedRecoveryAuthorization): void | Promise<void>;
 }
 
-export type IdentityIdempotencyScope = "enrollment" | "recovery-complete";
+export interface IssueBlindEntitlementInput {
+  syntheticIdentityRef: string;
+  matterId: string;
+  matterVersion: number;
+  matterKeyId: Uint8Array;
+  /** Blind signing is deterministic; serialization retries may invoke it again. */
+  sign(): Uint8Array | Promise<Uint8Array>;
+}
+
+export type IdentityIdempotencyScope = "enrollment" | "recovery-complete" | "blind-issuance";
 
 export interface IdentityIdempotencyRequest<T> {
   scope: IdentityIdempotencyScope;
@@ -285,6 +296,72 @@ export class PostgresIdentityStore {
     } finally {
       client.release();
     }
+  }
+
+  async issueBlindEntitlementIdempotent(
+    input: IssueBlindEntitlementInput,
+    idempotency: IdentityIdempotencyRequest<Uint8Array>,
+  ): Promise<IdempotentIdentityResult<Uint8Array>> {
+    if (idempotency.scope !== "blind-issuance") {
+      throw new TypeError("idempotency scope must be blind-issuance");
+    }
+    if (!input.syntheticIdentityRef.startsWith("synthetic:")) {
+      throw new TypeError("blind issuance accepts synthetic identities only");
+    }
+    const matterId = assertUuid("matterId", input.matterId);
+    if (
+      !Number.isSafeInteger(input.matterVersion) ||
+      input.matterVersion < 1 ||
+      input.matterVersion > 0xffff_ffff
+    ) {
+      throw new RangeError("matterVersion must be a positive unsigned 32-bit integer");
+    }
+    assertBytesLength("matterKeyId", input.matterKeyId, 32);
+
+    return this.serializable(async (client) => {
+      await this.assertTenant(client);
+      const claim = await this.claimIdempotency(client, idempotency);
+      if (claim !== undefined) return claim;
+      const enrollment = await client.query<{ enrollment_id: string }>(
+        `SELECT enrollment_id::text
+         FROM ida.enrollment
+         WHERE synthetic_identity_ref = $1 AND active = true
+         FOR UPDATE`,
+        [input.syntheticIdentityRef],
+      );
+      if (enrollment.rowCount !== 1) {
+        throw new IdentityStoreError(
+          "ENROLLMENT_NOT_AVAILABLE",
+          "active enrollment is not available for blind issuance",
+        );
+      }
+      const inserted = await client.query(
+        `INSERT INTO ida.matter_issuance(
+           enrollment_id, matter_id, matter_version
+         ) VALUES ($1::uuid, $2::uuid, $3)
+         ON CONFLICT (enrollment_id, matter_id, matter_version) DO NOTHING
+         RETURNING enrollment_id`,
+        [
+          enrollment.rows[0]!.enrollment_id,
+          matterId,
+          input.matterVersion,
+        ],
+      );
+      if (inserted.rowCount !== 1) {
+        throw new IdentityStoreError(
+          "ALREADY_ISSUED",
+          "an entitlement was already issued for this enrollment and matter version",
+        );
+      }
+      const blindSignature = assertBytesLength(
+        "blind entitlement signature",
+        await input.sign(),
+        384,
+      ).slice();
+      const responseCbor = this.encodeIdempotentResponse(idempotency, blindSignature);
+      await this.completeIdempotency(client, idempotency, responseCbor);
+      return { value: blindSignature, responseCbor, replayed: false };
+    });
   }
 
   async issueRecoveryChallenge(
