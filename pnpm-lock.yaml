@@ -54,6 +54,18 @@ importers:
         specifier: 1.8.0
         version: 1.8.0
 
+  services/ida:
+    dependencies:
+      '@cyber-cipher/identity-store':
+        specifier: workspace:*
+        version: link:../../packages/identity-store
+      '@cyber-cipher/membership-core':
+        specifier: workspace:*
+        version: link:../../packages/membership-core
+      '@cyber-cipher/protocol-core':
+        specifier: workspace:*
+        version: link:../../packages/protocol-core
+
 packages:
 
   '@hpke/common@1.10.1':

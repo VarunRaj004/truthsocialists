@@ -11,7 +11,9 @@ paths:
   /ida/v1/enrollments:
     post:
       operationId: createEnrollment
-      description: Identified, authenticated enrollment; never accepts complaint data.
+      description: >-
+        Identified, authenticated enrollment. The enrolled subject comes from the
+        server-side session and is forbidden in the CBOR body. Never accepts complaint data.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -85,6 +87,10 @@ paths:
           in: query
           required: true
           schema: {type: integer, minimum: 0}
+        - name: limit
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 100, default: 100}
       responses:
         '200': {$ref: '#/components/responses/CborObject'}
   /complaints/v1/proof-sessions:

@@ -196,9 +196,11 @@ A feature is complete only when its protocol/schema is versioned, positive and n
 ## 15. Current MVP build status (2026-10-01)
 
 The TypeScript protocol core, in-memory membership/recovery model, tenant-bound
-PostgreSQL enrollment and recovery transactions, and durable 30-second signed
-membership checkpoint publisher are implemented. Phase 2 still needs service
-endpoints and client-side path/checkpoint synchronization.
+PostgreSQL enrollment and recovery transactions, durable 30-second signed
+membership checkpoint publisher, and deterministic-CBOR Identity Authority API
+boundary are implemented. Phase 2 still needs durable transaction-coupled API
+idempotency, a deployed authenticated-session adapter, and client-side
+path/checkpoint synchronization.
 
 Eight major implementation steps remain for the experimental MVP:
 

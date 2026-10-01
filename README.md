@@ -58,11 +58,14 @@ Implemented so far:
   durable recovery challenges, atomic device/recovery rotation, and old-leaf revocation;
 - durable 30-second membership checkpoint publication with history replay,
   signed hash chaining, ordered deltas, and non-overlapping worker execution;
+- deterministic-CBOR Identity Authority endpoints for authenticated synthetic
+  enrollment, signed recovery, current checkpoints, and paginated deltas;
 - conformance tests against the published reference vectors.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/membership-core`](packages/membership-core/README.md), and
 [`packages/identity-store`](packages/identity-store/README.md) for the executable
-code and current boundaries.
+code and current boundaries. The network boundary is in
+[`services/ida`](services/ida/README.md).
 
 This is not production-ready software. Real deployment requires external cryptographic, penetration, privacy, accessibility, legal, and operational reviews.
