@@ -21,6 +21,13 @@ Enrollment does not accept an identity field. An injected
 already authenticated session. The service instance is bound to one tenant, so
 request fields cannot select a database or signing key.
 
+`SignedInstitutionalSessionAuthorizer` is the deployable prototype adapter. It
+accepts only `Bearer cc1.<base64url>` tokens containing canonical CBOR signed by
+a tenant-configured Ed25519 institutional key. The fifteen-minute-or-shorter
+session binds a random 128-bit session ID, synthetic identity, tenant, issuer,
+audience, issue time, expiry, and signing-key fingerprint. Invalid tokens are
+collapsed to the same unauthenticated result; there is no trusted-header bypass.
+
 ## Recovery verification
 
 The application creates a signed five-minute challenge with the dedicated
@@ -47,3 +54,11 @@ tests and fake operations that do not implement the durable methods. It must not
 be used for a multi-instance deployment.
 The service intentionally has no default trust-header or development-login
 bypass.
+
+## End-to-end test
+
+With `TEST_DATABASE_URL` set to an isolated database ending in `test`, the
+PostgreSQL end-to-end test signs an institutional session, enrolls over HTTP,
+replays the durable request, publishes a checkpoint, reconstructs a verified
+client witness, performs recovery, publishes the revocation/replacement delta,
+and proves that the old witness is invalid while the new index is active.

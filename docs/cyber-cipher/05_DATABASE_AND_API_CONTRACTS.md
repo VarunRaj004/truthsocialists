@@ -100,12 +100,18 @@ The machine-oriented outline is `api/openapi.yaml`. Required endpoint groups fol
 
 | Method/path | Authentication | Purpose |
 |---|---|---|
-| `POST /ida/v1/enrollments` | Identified enrollment session | Validate NIC/contact and create person/device membership |
+| `POST /ida/v1/enrollments` | Tenant-bound Ed25519 institutional session | Validate the synthetic eligible subject and create person/device membership |
 | `POST /ida/v1/matters/{id}/{version}/blind-issuance` | Enrolled device session | Submit blinded RSA request; one completed issuance per NIC/matter version |
 | `GET /public/v1/membership/checkpoints/current` | None | Current signed membership checkpoint |
 | `GET /public/v1/membership/deltas?afterEpoch=` | None | Public updates for local tree/path reconstruction |
 | `POST /ida/v1/recovery/challenges` | Recovery ID plus abuse controls | Issue signed five-minute challenge |
 | `POST /ida/v1/recovery/complete` | Recovery signature | Atomic device/recovery rotation |
+
+The prototype institutional session is a canonical-CBOR `Bearer cc1.` token
+signed by a tenant-configured Ed25519 key. It binds protocol version, tenant,
+random 128-bit session ID, synthetic subject, issuer, audience, issue time,
+expiry, and signing-key fingerprint. Its maximum lifetime is fifteen minutes.
+The identity field is not accepted in the enrollment body.
 
 ### Complaints
 

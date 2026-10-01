@@ -3,6 +3,7 @@ import {
   decodeCanonical,
   encodeCanonical,
   integerMap,
+  sha256,
   type CborKey,
   type CborValue,
 } from "@cyber-cipher/protocol-core";
@@ -104,6 +105,50 @@ export function encodeCheckpointDeltasResponse(
       [3, entries as readonly CborValue[]],
     ]),
   );
+}
+
+export interface DecodedCheckpointDelta {
+  epoch: bigint;
+  deltaCbor: Uint8Array;
+  signedCheckpointCbor: Uint8Array;
+  checkpointHash: Uint8Array;
+}
+
+export interface DecodedCheckpointDeltasResponse {
+  tenantId: Uint8Array;
+  checkpoints: DecodedCheckpointDelta[];
+}
+
+export function decodeCheckpointDeltasResponse(
+  encoded: Uint8Array,
+): DecodedCheckpointDeltasResponse {
+  const decoded = mapValue(encoded, [1n, 2n, 3n]);
+  const version = decoded.get(1n);
+  if (version !== 1n) throw new Error("unsupported checkpoint-deltas response version");
+  const tenantId = bytes(decoded, 2n, 16, "tenantId");
+  const entries = decoded.get(3n);
+  if (!Array.isArray(entries)) throw new TypeError("checkpoint deltas must be an array");
+  const checkpoints = entries.map((entry): DecodedCheckpointDelta => {
+    assertExactIntegerKeys(entry, [1n, 2n, 3n, 4n]);
+    const epoch = entry.get(1n);
+    if (typeof epoch !== "bigint" || epoch < 1n) {
+      throw new TypeError("checkpoint epoch must be a positive integer");
+    }
+    const deltaCbor = bytesVariable(entry, 2n, "deltaCbor");
+    const signedCheckpointCbor = bytesVariable(entry, 3n, "signedCheckpointCbor");
+    const checkpointHash = bytes(entry, 4n, 32, "checkpointHash");
+    const expectedHash = sha256(signedCheckpointCbor);
+    if (!checkpointHash.every((value, index) => value === expectedHash[index])) {
+      throw new Error("checkpoint hash does not match the signed checkpoint");
+    }
+    return {
+      epoch,
+      deltaCbor: deltaCbor.slice(),
+      signedCheckpointCbor: signedCheckpointCbor.slice(),
+      checkpointHash: checkpointHash.slice(),
+    };
+  });
+  return { tenantId: tenantId.slice(), checkpoints };
 }
 
 export function encodeErrorResponse(code: string): Uint8Array {

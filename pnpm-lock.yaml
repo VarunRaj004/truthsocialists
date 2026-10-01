@@ -65,6 +65,13 @@ importers:
       '@cyber-cipher/protocol-core':
         specifier: workspace:*
         version: link:../../packages/protocol-core
+    devDependencies:
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+      pg:
+        specifier: 8.23.0
+        version: 8.23.0
 
 packages:
 

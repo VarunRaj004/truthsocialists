@@ -200,21 +200,19 @@ PostgreSQL enrollment and recovery transactions, durable 30-second signed
 membership checkpoint publisher, and deterministic-CBOR Identity Authority API
 boundary are implemented. Client-side checkpoint-chain verification, ordered
 delta application, local Poseidon-tree reconstruction, and membership-path
-updates are also implemented. Durable transaction-coupled API idempotency is
-now implemented; Phase 2 still needs a deployed authenticated-session adapter
-and an end-to-end PostgreSQL/API/client demo.
+updates are also implemented. Durable transaction-coupled API idempotency, the
+signed institutional-session adapter, and an end-to-end enrollment/recovery
+PostgreSQL/API/checkpoint/client demonstration complete the Phase 2 slice.
 
-Eight major implementation steps remain for the experimental MVP:
+Seven major implementation steps remain for the experimental MVP:
 
-1. Finish Phase 2 with the institutional session adapter and an end-to-end
-   PostgreSQL/API/client demonstration.
-2. Build the Phase 3 matter registry and RFC 9474 RSA blind-entitlement issuance.
-3. Build and integrate the Phase 4 complaint and voting Groth16 circuits.
-4. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
-5. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
-6. Build the Phase 7 handler workflow and anonymous mailbox.
-7. Build the Phase 8 redaction, community voting, and auditor comparison flow.
-8. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
+1. Build the Phase 3 matter registry and RFC 9474 RSA blind-entitlement issuance.
+2. Build and integrate the Phase 4 complaint and voting Groth16 circuits.
+3. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
+4. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
+5. Build the Phase 7 handler workflow and anonymous mailbox.
+6. Build the Phase 8 redaction, community voting, and auditor comparison flow.
+7. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
    the MVP security and acceptance suite.
 
 Phase 9 external review and controlled-pilot hardening remains mandatory before

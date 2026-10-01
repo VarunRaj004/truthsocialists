@@ -55,6 +55,8 @@ G1-G8 are required for a synthetic-data demonstration. G9 is additionally requir
 | MEM-05 | Tamper with checkpoint root, epoch, predecessor, or signature. | Client rejects and raises fork/integrity warning. |
 | MEM-06 | Generate proof for active leaf/current root. | Verification succeeds. |
 | MEM-07 | Revoke leaf, wait for root update/lease expiry, reuse old proof/path. | Verification fails. |
+| MEM-08 | Modify, expire, cross-tenant, or cross-audience an institutional session token. | Enrollment is rejected before identity state changes. |
+| MEM-09 | Enroll and recover through HTTP/PostgreSQL/checkpoint/client boundaries. | Old witness becomes invalid and the never-reused replacement index verifies at the next epoch. |
 | REC-01 | Recover with correct seed and five-minute challenge. | Old leaf revoked; fresh index/device/recovery credential activated atomically. |
 | REC-02 | Replay consumed recovery challenge. | Rejected; no state change. |
 | REC-03 | Use expired, altered, or wrong-generation challenge. | Rejected uniformly; no state change. |

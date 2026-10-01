@@ -22,5 +22,9 @@
     "@cyber-cipher/identity-store": "workspace:*",
     "@cyber-cipher/membership-core": "workspace:*",
     "@cyber-cipher/protocol-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "pg": "8.23.0"
   }
 }

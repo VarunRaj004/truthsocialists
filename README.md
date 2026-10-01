@@ -61,6 +61,8 @@ Implemented so far:
 - deterministic-CBOR Identity Authority endpoints for authenticated synthetic
   enrollment, signed recovery, current checkpoints, and paginated deltas, with
   transaction-coupled PostgreSQL idempotency for enrollment and recovery;
+- tenant-bound Ed25519 institutional-session tokens with issuer, audience,
+  lifetime, session-ID, and synthetic-subject validation;
 - a client membership synchronizer that validates checkpoint signatures, hash
   chaining, tenant deltas, Poseidon roots, and active membership paths;
 - conformance tests against the published reference vectors.
