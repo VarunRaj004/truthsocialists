@@ -12,6 +12,22 @@ jobs:
   protocol-core:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: truthsocialists_test
+          POSTGRES_USER: truthsocialists
+          POSTGRES_PASSWORD: ci-integration-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U truthsocialists -d truthsocialists_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://truthsocialists:ci-integration-only@127.0.0.1:5432/truthsocialists_test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

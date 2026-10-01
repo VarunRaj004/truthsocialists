@@ -36,7 +36,9 @@ The prototype uses Semaphore-style Merkle membership. A custom zero-knowledge RS
 
 ## Current status
 
-Design baseline complete. The TypeScript Phase 1 protocol core is implemented; cross-language conformance and dedicated continuous fuzzing remain before the Phase 1 exit gate.
+Design baseline complete. The TypeScript Phase 1 protocol core and the first
+tenant-isolated identity persistence slice are implemented; cross-language
+conformance and dedicated continuous fuzzing remain before the Phase 1 exit gate.
 
 Implemented so far:
 
@@ -52,8 +54,13 @@ Implemented so far:
 - tenant-scoped depth-16 Poseidon membership tree, monotonic allocation, revocation, recovery rotation, public deltas, and signed checkpoints;
 - HKDF-derived recovery keys, encrypted recovery backups, signed five-minute challenges, one-time authorization, and mandatory recovery rotation;
 - SaaS tenant registry that forbids checkpoint-key reuse and keeps tenant trust zones separately routed;
+- tenant-bound PostgreSQL identity storage with serializable enrollment allocation,
+  durable recovery challenges, atomic device/recovery rotation, and old-leaf revocation;
 - conformance tests against the published reference vectors.
 
-See [`packages/protocol-core`](packages/protocol-core/README.md) and [`packages/membership-core`](packages/membership-core/README.md) for the executable code and current boundaries.
+See [`packages/protocol-core`](packages/protocol-core/README.md),
+[`packages/membership-core`](packages/membership-core/README.md), and
+[`packages/identity-store`](packages/identity-store/README.md) for the executable
+code and current boundaries.
 
 This is not production-ready software. Real deployment requires external cryptographic, penetration, privacy, accessibility, legal, and operational reviews.

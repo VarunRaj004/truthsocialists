@@ -2,3 +2,7 @@ packages:
   - "packages/*"
   - "services/*"
   - "apps/*"
+overrides:
+  pg-cloudflare: 1.4.0
+  pg-connection-string: 2.14.0
+  pg-protocol: 1.16.0
