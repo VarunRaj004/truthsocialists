@@ -80,12 +80,16 @@ export class SparseMembershipTree {
 
   verify(leaf: bigint, proof: MembershipProof, expectedRoot: bigint): boolean {
     if (proof.siblings.length !== this.depth || proof.pathBits.length !== this.depth) return false;
+    if (!Number.isInteger(proof.index) || proof.index < 0 || proof.index >= this.capacity) return false;
     let current = assertField(leaf);
+    let cursor = proof.index;
     for (let level = 0; level < this.depth; level += 1) {
       const sibling = assertField(proof.siblings[level]!);
       const bit = proof.pathBits[level];
       if (bit !== 0 && bit !== 1) return false;
+      if (bit !== (cursor & 1)) return false;
       current = bit === 0 ? merkleNode(current, sibling) : merkleNode(sibling, current);
+      cursor = Math.floor(cursor / 2);
     }
     return current === expectedRoot;
   }

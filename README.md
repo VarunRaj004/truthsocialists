@@ -60,6 +60,8 @@ Implemented so far:
   signed hash chaining, ordered deltas, and non-overlapping worker execution;
 - deterministic-CBOR Identity Authority endpoints for authenticated synthetic
   enrollment, signed recovery, current checkpoints, and paginated deltas;
+- a client membership synchronizer that validates checkpoint signatures, hash
+  chaining, tenant deltas, Poseidon roots, and active membership paths;
 - conformance tests against the published reference vectors.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),

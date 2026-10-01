@@ -1,3 +1,4 @@
+export * from "./client.js";
 export * from "./poseidon.js";
 export * from "./recovery.js";
 export * from "./service.js";
