@@ -63,14 +63,17 @@ Implemented so far:
   transaction-coupled PostgreSQL idempotency for enrollment and recovery;
 - tenant-bound Ed25519 institutional-session tokens with issuer, audience,
   lifetime, session-ID, and synthetic-subject validation;
+- tenant-bound matter publication with immutable UUID/version metadata,
+  RSA-3072/PSS profile enforcement, 24-hour lead time, and encrypted PKCS#8 envelopes;
 - a client membership synchronizer that validates checkpoint signatures, hash
   chaining, tenant deltas, Poseidon roots, and active membership paths;
 - conformance tests against the published reference vectors.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
-[`packages/membership-core`](packages/membership-core/README.md), and
-[`packages/identity-store`](packages/identity-store/README.md) for the executable
-code and current boundaries. The network boundary is in
+[`packages/membership-core`](packages/membership-core/README.md),
+[`packages/identity-store`](packages/identity-store/README.md), and
+[`packages/matter-registry`](packages/matter-registry/README.md) for the
+executable code and current boundaries. The network boundary is in
 [`services/ida`](services/ida/README.md).
 
 This is not production-ready software. Real deployment requires external cryptographic, penetration, privacy, accessibility, legal, and operational reviews.

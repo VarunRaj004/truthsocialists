@@ -204,6 +204,12 @@ updates are also implemented. Durable transaction-coupled API idempotency, the
 signed institutional-session adapter, and an end-to-end enrollment/recovery
 PostgreSQL/API/checkpoint/client demonstration complete the Phase 2 slice.
 
+Phase 3 now has its matter-registry foundation: strict RSA-3072/PSS public-key
+profile validation, SHA-256 `matterKeyId`, AES-256-GCM PKCS#8 envelopes,
+tenant-bound PostgreSQL publication, sequential immutable versions, the 24-hour
+lead-time rule, and public lifecycle derivation. RFC 9474 blinding, atomic
+one-per-matter issuance, and private-key retirement automation remain next.
+
 Seven major implementation steps remain for the experimental MVP:
 
 1. Build the Phase 3 matter registry and RFC 9474 RSA blind-entitlement issuance.

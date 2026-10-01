@@ -64,6 +64,12 @@ pending-row deletion then commit in one serializable transaction.
 
 Stores public matter ID/version, title, window, RSA SPKI/fingerprint, circuit artifact IDs, handler organization/key ID, publication time, and lifecycle status. `(matter_id, version)` and `matter_key_id` are unique.
 
+The executable `packages/matter-registry` migration places this public registry
+in a tenant-bound database boundary. Versions start at one and advance without
+gaps for a UUIDv4 matter ID. Metadata is immutable after publication; lifecycle
+state is derived from the public window until an explicit post-close retirement.
+The schema has no private-key or KEK column.
+
 ### `proof_session`
 
 Stores random challenge ID, purpose, root/epoch, signed lease, issue/expiry times, and consumption state. It stores no client network metadata. Expired sessions are purged within 24 hours.
