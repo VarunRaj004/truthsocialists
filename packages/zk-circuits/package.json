@@ -33,7 +33,8 @@
     "development:setup": "pnpm --filter @cyber-cipher/protocol-core build && pnpm run build && node scripts/dev-setup.mjs",
     "test:e2e": "pnpm run development:setup && node --test --test-force-exit test/groth16.e2e.test.mjs",
     "test:simulation-e2e": "pnpm run build && node scripts/test-simulated-artifacts.mjs",
-    "test": "pnpm --filter @cyber-cipher/protocol-core build && pnpm --filter @cyber-cipher/membership-core build && pnpm run build && pnpm run circuits:ensure && pnpm run circuits:compile && pnpm run circuits:test && node --test dist/test/*.test.js"
+    "test": "pnpm --filter @cyber-cipher/protocol-core build && pnpm --filter @cyber-cipher/membership-core build && pnpm run build && pnpm run circuits:ensure && pnpm run circuits:compile && pnpm run circuits:test && node --test dist/test/*.test.js",
+    "precheck": "pnpm --filter @cyber-cipher/protocol-core build && pnpm --filter @cyber-cipher/membership-core build"
   },
   "dependencies": {
     "@cyber-cipher/protocol-core": "workspace:*",

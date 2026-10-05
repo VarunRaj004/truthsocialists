@@ -19,7 +19,7 @@
     "prebuild": "pnpm --filter @cyber-cipher/protocol-core build",
     "build": "pnpm run clean && tsc -p tsconfig.json",
     "test": "pnpm run build && node --test dist/test/*.test.js",
-    "precheck": "pnpm --filter @cyber-cipher/protocol-core build",
+    "precheck": "pnpm --filter @cyber-cipher/protocol-core build && pnpm --filter @cyber-cipher/membership-core build",
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
