@@ -1,0 +1,27 @@
+{
+  "name": "@cyber-cipher/complaint-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Client-side encrypted complaint preparation for Cyber Cipher",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prebuild": "pnpm --filter @cyber-cipher/protocol-core build",
+    "build": "pnpm run clean && tsc -p tsconfig.json",
+    "test": "pnpm run build && node --test dist/test/*.test.js",
+    "precheck": "pnpm --filter @cyber-cipher/protocol-core build",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cyber-cipher/protocol-core": "workspace:*"
+  }
+}

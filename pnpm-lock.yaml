@@ -20,6 +20,12 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/complaint-core:
+    dependencies:
+      '@cyber-cipher/protocol-core':
+        specifier: workspace:*
+        version: link:../protocol-core
+
   packages/identity-store:
     dependencies:
       '@cyber-cipher/membership-core':

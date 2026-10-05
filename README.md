@@ -76,12 +76,17 @@ Implemented so far:
   witness tests, a content-addressed proof-verifier allowlist, canonical artifact
   manifests, real development-proof integration tests, and a backend-neutral
   client prover boundary for later Android/iOS Rapidsnark adapters.
+- the first Phase 5 complaint-client slice: evidence type/size/signature policy,
+  NFC text normalization, privacy-neutral filenames, deterministic-CBOR manifests,
+  salted commitments, AES-256-GCM package encryption, and handler-specific HPKE
+  DEK wrapping with authenticated routing context.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/membership-core`](packages/membership-core/README.md),
 [`packages/identity-store`](packages/identity-store/README.md), and
 [`packages/matter-registry`](packages/matter-registry/README.md), and
-[`packages/zk-circuits`](packages/zk-circuits/README.md) for the
+[`packages/zk-circuits`](packages/zk-circuits/README.md), and
+[`packages/complaint-core`](packages/complaint-core/README.md) for the
 executable code and current boundaries. The network boundary is in
 [`services/ida`](services/ida/README.md).
 

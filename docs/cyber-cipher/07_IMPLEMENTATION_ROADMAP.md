@@ -220,6 +220,12 @@ The Phase 4 circuit implementation and a guarded, single-operator ceremony
 simulation are complete. Independent contributors, a future public beacon, and
 physical mobile benchmarks remain production-readiness gates.
 
+Phase 5 has started with the client-side encrypted complaint preparation slice:
+evidence policy enforcement, NFC normalization, deterministic manifests, salted
+commitments, AES-256-GCM content encryption, and handler-specific HPKE DEK
+wrapping. Proof-session issuance, atomic server acceptance, receipts, and object
+storage remain in progress.
+
 Five major implementation steps remain for the experimental MVP:
 
 1. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
