@@ -24,6 +24,17 @@ proofs. It proves one complaint plus all four vote choices and confirms that a
 proof cannot be relabelled with another serial. These keys are never eligible
 for deployment.
 
+For the experimental MVP, a three-role single-operator ceremony may be packaged
+without weakening the production checks. After generating the reserved
+`Development-Simulated-A/B/C` transcript, run
+`artifacts:publish-simulation complaint` and `artifacts:publish-simulation vote`.
+The deterministic bundles are written beneath ignored
+`tmp/simulated-zk-artifacts`, carry `productionEligible: false`, and bind the
+simulation report, final transcript, R1CS, WASM, proving key, and verification
+key. Run `test:simulation-e2e` to generate and mutate real proofs against those
+exact bundles. The normal `artifacts:publish` command rejects these contributor
+names, so the simulation cannot be promoted accidentally.
+
 ## Frozen public signals
 
 Complaint: `membershipRoot`, `epoch`, `matterField`, `serialField`,

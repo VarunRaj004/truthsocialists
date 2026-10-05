@@ -216,14 +216,17 @@ identified-session-to-locally-verified-token path and fail closed on key,
 matter-window, and message changes. The exact pinned blind-RSA release also
 passes its 98-test upstream suite, including the RFC 9474 vectors.
 
-Six major implementation steps remain for the experimental MVP:
+The Phase 4 circuit implementation and a guarded, single-operator ceremony
+simulation are complete. Independent contributors, a future public beacon, and
+physical mobile benchmarks remain production-readiness gates.
 
-1. Build and integrate the Phase 4 complaint and voting Groth16 circuits.
-2. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
-3. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
-4. Build the Phase 7 handler workflow and anonymous mailbox.
-5. Build the Phase 8 redaction, community voting, and auditor comparison flow.
-6. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
+Five major implementation steps remain for the experimental MVP:
+
+1. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
+2. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
+3. Build the Phase 7 handler workflow and anonymous mailbox.
+4. Build the Phase 8 redaction, community voting, and auditor comparison flow.
+5. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
    the MVP security and acceptance suite.
 
 Phase 9 external review and controlled-pilot hardening remains mandatory before

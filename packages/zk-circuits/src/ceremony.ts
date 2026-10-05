@@ -21,7 +21,9 @@ export function assertProductionPhaseTwoTranscript(
   const normalized = snarkjsVerificationOutput.replace(ANSI_ESCAPE, "");
   if (!normalized.includes("ZKey Ok!")) throw new Error("snarkjs did not report ZKey Ok!");
   const contributions = parsePhaseTwoContributions(normalized);
-  const people = contributions.filter(({ index }) => index >= 1 && index <= 3);
+  const people = contributions
+    .filter(({ index }) => index >= 1 && index <= 3)
+    .sort((left, right) => left.index - right.index);
   if (people.length !== 3 || people.some(({ index }, offset) => index !== offset + 1)) {
     throw new Error("phase two must contain contributions #1, #2, and #3");
   }
@@ -29,6 +31,31 @@ export function assertProductionPhaseTwoTranscript(
   if (names.size !== 3) throw new Error("phase-two contributor names must be distinct");
   if (people.some(({ name }) => /development|insecure|test/i.test(name))) {
     throw new Error("development or test contributions cannot be published");
+  }
+  const beacon = contributions.find(({ index }) => index === 4);
+  if (beacon?.name !== "Cyber Cipher public final beacon") {
+    throw new Error("the fourth contribution must be the declared Cyber Cipher public final beacon");
+  }
+  return contributions;
+}
+
+export function assertMvpSimulationPhaseTwoTranscript(
+  snarkjsVerificationOutput: string,
+): readonly PhaseTwoContribution[] {
+  const contributions = parsePhaseTwoContributions(snarkjsVerificationOutput);
+  if (!snarkjsVerificationOutput.replace(ANSI_ESCAPE, "").includes("ZKey Ok!")) {
+    throw new Error("snarkjs did not report ZKey Ok!");
+  }
+  const people = contributions
+    .filter(({ index }) => index >= 1 && index <= 3)
+    .sort((left, right) => left.index - right.index);
+  if (people.length !== 3 || people.some(({ index }, offset) => index !== offset + 1)) {
+    throw new Error("simulation must contain contributions #1, #2, and #3");
+  }
+  const names = new Set(people.map(({ name }) => name.normalize("NFC").trim().toLocaleLowerCase("en-US")));
+  if (names.size !== 3) throw new Error("simulation contributor names must be distinct");
+  if (people.some(({ name }) => !/^Development-Simulated-[A-C]$/.test(name))) {
+    throw new Error("simulation contributors must use the reserved development names");
   }
   const beacon = contributions.find(({ index }) => index === 4);
   if (beacon?.name !== "Cyber Cipher public final beacon") {

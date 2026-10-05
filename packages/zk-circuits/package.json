@@ -28,9 +28,11 @@
     "ceremony:verify-phase1": "node scripts/verify-phase1.mjs",
     "ceremony:phase2": "node scripts/phase2.mjs",
     "artifacts:publish": "pnpm run build && node scripts/publish-artifact.mjs",
+    "artifacts:publish-simulation": "pnpm run build && node scripts/publish-simulated-artifact.mjs",
     "ceremony:derive-beacon": "node scripts/derive-public-beacon.mjs",
     "development:setup": "pnpm --filter @cyber-cipher/protocol-core build && pnpm run build && node scripts/dev-setup.mjs",
     "test:e2e": "pnpm run development:setup && node --test --test-force-exit test/groth16.e2e.test.mjs",
+    "test:simulation-e2e": "pnpm run build && node scripts/test-simulated-artifacts.mjs",
     "test": "pnpm --filter @cyber-cipher/protocol-core build && pnpm --filter @cyber-cipher/membership-core build && pnpm run build && pnpm run circuits:ensure && pnpm run circuits:compile && pnpm run circuits:test && node --test dist/test/*.test.js"
   },
   "dependencies": {

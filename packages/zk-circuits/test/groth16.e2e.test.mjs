@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { setMaxListeners } from "node:events";
+import { readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -35,20 +36,35 @@ function membershipFixture() {
 }
 
 function paths(circuit) {
+  if (process.env.CYBER_CIPHER_ZK_PROFILE === "mvp-simulation") {
+    const artifactParent = path.join(repositoryRoot, "tmp", "simulated-zk-artifacts", circuit);
+    const artifactIds = readdirSync(artifactParent, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    assert.equal(artifactIds.length, 1, `expected one simulated ${circuit} artifact`);
+    const artifactRoot = path.join(artifactParent, artifactIds[0]);
+    return {
+      wasm: path.join(artifactRoot, `${circuit}.wasm`),
+      zkey: path.join(artifactRoot, `${circuit}_final.zkey`),
+      vkey: path.join(artifactRoot, `${circuit}_verification_key.json`),
+      metadata: path.join(artifactRoot, "SIMULATION_ONLY.json"),
+      manifest: path.join(artifactRoot, `${circuit}_artifact_manifest.cbor`),
+    };
+  }
+  const artifactRoot = path.join(repositoryRoot, "tmp", "zk-development-keys", circuit);
   return {
     wasm: path.join(packageRoot, "build", "circuits", circuit, `${circuit}_js`, `${circuit}.wasm`),
-    zkey: path.join(repositoryRoot, "tmp", "zk-development-keys", circuit, `${circuit}_development.zkey`),
-    vkey: path.join(repositoryRoot, "tmp", "zk-development-keys", circuit, `${circuit}_verification_key.json`),
+    zkey: path.join(artifactRoot, `${circuit}_development.zkey`),
+    vkey: path.join(artifactRoot, `${circuit}_verification_key.json`),
+    metadata: path.join(artifactRoot, "DEVELOPMENT_ONLY.json"),
+    manifest: path.join(artifactRoot, `${circuit}_artifact_manifest.cbor`),
   };
 }
 
-async function verifier(circuit, names, vkeyPath) {
-  const bytes = await readFile(vkeyPath);
-  const metadataPath = path.join(path.dirname(vkeyPath), "DEVELOPMENT_ONLY.json");
-  const metadata = JSON.parse(await readFile(metadataPath, "utf8"));
-  const manifest = await readFile(
-    path.join(path.dirname(vkeyPath), `${circuit}_artifact_manifest.cbor`),
-  );
+async function verifier(circuit, names, files) {
+  const bytes = await readFile(files.vkey);
+  const metadata = JSON.parse(await readFile(files.metadata, "utf8"));
+  const manifest = await readFile(files.manifest);
   assert.equal(metadata.productionEligible, false);
   assert.equal(createHash("sha256").update(manifest).digest("hex"), metadata.artifactId);
   const artifactId = new Uint8Array(Buffer.from(metadata.artifactId, "hex"));
@@ -88,7 +104,7 @@ test("real complaint Groth16 proof verifies and cannot be relabelled", async () 
   const files = paths("complaint");
   const generated = await groth16.fullProve(input, files.wasm, files.zkey);
   assert.deepEqual(generated.publicSignals, signals.map(String));
-  const registered = await verifier("complaint", COMPLAINT_PUBLIC_SIGNAL_NAMES, files.vkey);
+  const registered = await verifier("complaint", COMPLAINT_PUBLIC_SIGNAL_NAMES, files);
   const envelope = {
     artifactId: registered.artifactId,
     circuitName: "complaint",
@@ -107,7 +123,7 @@ test("real complaint Groth16 proof verifies and cannot be relabelled", async () 
 test("real vote Groth16 proofs verify for all four choices", async () => {
   const member = membershipFixture();
   const files = paths("vote");
-  const registered = await verifier("vote", VOTE_PUBLIC_SIGNAL_NAMES, files.vkey);
+  const registered = await verifier("vote", VOTE_PUBLIC_SIGNAL_NAMES, files);
   for (let choice = 0n; choice <= 3n; choice += 1n) {
     const signals = votePublicSignals({
       membershipRoot: member.tree.root,

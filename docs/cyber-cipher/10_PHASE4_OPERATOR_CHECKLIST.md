@@ -1,6 +1,13 @@
 # Phase 4 operator checklist
 
-Status: implementation-ready; external ceremony and physical-device evidence pending.
+Status: experimental MVP simulation complete; independent production ceremony
+and physical-device evidence pending.
+
+The MVP simulation produces deterministic non-production complaint and vote
+artifact bundles and passes real-proof/mutation tests against the resulting
+keys. Reserved `Development-Simulated-*` identities are rejected by the
+production publisher. This evidence validates the workflow only; it does not
+claim contributor independence or replace the remaining production gates below.
 
 This checklist separates automated controls from facts that require independent
 people or real hardware. Do not substitute development keys for any ceremony
