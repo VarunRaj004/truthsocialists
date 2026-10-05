@@ -1,0 +1,26 @@
+{
+  "circom": {
+    "version": "2.2.3",
+    "release": "https://github.com/iden3/circom/releases/tag/v2.2.3",
+    "assets": {
+      "linux-x64": {
+        "name": "circom-linux-amd64",
+        "sha256": "85342c7ff332d948df7c0c50ecf201e6129349aef550ce873f3c811b79fe53a3"
+      },
+      "darwin-x64": {
+        "name": "circom-macos-amd64",
+        "sha256": "e006332b3fe225f11c3b87bd2debbf5d7f568d6efbde25e5a6a12cd6988c8ecb"
+      },
+      "win32-x64": {
+        "name": "circom-windows-amd64.exe",
+        "sha256": "e43f132ee6f0aa79b705beceb59c2a7e6a54d7bdeab917ca34e9fc1951d185e1"
+      }
+    }
+  },
+  "circomlib": "2.0.5",
+  "snarkjs": "0.7.6",
+  "curve": "bn128",
+  "proofSystem": "groth16",
+  "optimization": "O2",
+  "sanityCheck": 2
+}

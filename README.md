@@ -71,11 +71,17 @@ Implemented so far:
 - a client membership synchronizer that validates checkpoint signatures, hash
   chaining, tenant deltas, Poseidon roots, and active membership paths;
 - conformance tests against the published reference vectors.
+- pinned Circom 2.2.3/circomlib 2.0.5/snarkjs 0.7.6 tooling, complaint and
+  community-vote Groth16/BN254 circuits, locked constraint counts, negative
+  witness tests, a content-addressed proof-verifier allowlist, canonical artifact
+  manifests, real development-proof integration tests, and a backend-neutral
+  client prover boundary for later Android/iOS Rapidsnark adapters.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/membership-core`](packages/membership-core/README.md),
 [`packages/identity-store`](packages/identity-store/README.md), and
-[`packages/matter-registry`](packages/matter-registry/README.md) for the
+[`packages/matter-registry`](packages/matter-registry/README.md), and
+[`packages/zk-circuits`](packages/zk-circuits/README.md) for the
 executable code and current boundaries. The network boundary is in
 [`services/ida`](services/ida/README.md).
 

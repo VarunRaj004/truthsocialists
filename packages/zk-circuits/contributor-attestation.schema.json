@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cyber-cipher.example/schemas/phase2-contributor-attestation-v1.json",
+  "title": "Cyber Cipher Phase 2 contributor attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "circuit",
+    "circuitGitCommit",
+    "contributionIndex",
+    "contributorName",
+    "contributedAt",
+    "inputZkeySha256",
+    "outputZkeySha256",
+    "toolchain",
+    "independentEnvironment",
+    "entropyGeneratedPrivately",
+    "entropyNotDisclosed",
+    "entropyDestroyed"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "circuit": { "enum": ["complaint", "vote"] },
+    "circuitGitCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "contributionIndex": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "contributorName": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "contributedAt": { "type": "string", "format": "date-time" },
+    "inputZkeySha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "outputZkeySha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["circom", "snarkjs"],
+      "properties": {
+        "circom": { "const": "2.2.3" },
+        "snarkjs": { "const": "0.7.6" }
+      }
+    },
+    "independentEnvironment": { "const": true },
+    "entropyGeneratedPrivately": { "const": true },
+    "entropyNotDisclosed": { "const": true },
+    "entropyDestroyed": { "const": true },
+    "evidenceReference": { "type": "string", "maxLength": 500 },
+    "notes": { "type": "string", "maxLength": 1000 }
+  }
+}

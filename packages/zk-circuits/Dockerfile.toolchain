@@ -1,0 +1,18 @@
+FROM node:24.10.0-bookworm-slim
+
+ARG CIRCOM_VERSION=2.2.3
+ARG CIRCOM_SHA256=85342c7ff332d948df7c0c50ecf201e6129349aef550ce873f3c811b79fe53a3
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates curl \
+    && curl --fail --location --retry 4 \
+      "https://github.com/iden3/circom/releases/download/v${CIRCOM_VERSION}/circom-linux-amd64" \
+      --output /tmp/circom \
+    && echo "${CIRCOM_SHA256}  /tmp/circom" | sha256sum --check --strict \
+    && install -m 0755 /tmp/circom /usr/local/bin/circom \
+    && rm -f /tmp/circom \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable \
+    && corepack prepare pnpm@11.19.0 --activate
+
+WORKDIR /workspace

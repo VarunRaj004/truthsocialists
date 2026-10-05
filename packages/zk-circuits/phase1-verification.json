@@ -1,0 +1,18 @@
+{
+  "verified": true,
+  "tool": "snarkjs",
+  "toolVersion": "0.7.6",
+  "curve": "bn128",
+  "power": 14,
+  "capacity": 16384,
+  "contributionCount": 55,
+  "powersOfTauFile": "powersOfTau28_hez_final_14.ptau",
+  "blake2b512": "eeefbcf7c3803b523c94112023c7ff89558f9b8e0cf5d6cdcba3ade60f168af4a181c9c21774b94fbae6c90411995f7d854d02ebd93fb66043dbb06f17a831c1",
+  "sha256": "489be9e5ac65d524f7b1685baac8a183c6e77924fdb73d2b8105e335f277895d",
+  "verificationLogSha256": "f820c5162f05c0b015fc53bc7b7e681e53f62572225d549b413aa7f282275a45",
+  "verificationLogBytes": 45647,
+  "successMarkers": [
+    "Powers Of tau file OK!",
+    "Powers of Tau Ok!"
+  ]
+}

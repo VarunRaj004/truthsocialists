@@ -1,0 +1,45 @@
+{
+  "name": "@cyber-cipher/zk-circuits",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Groth16 BN254 complaint and community-vote circuits",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "circuits",
+    "dist",
+    "ceremony.lock.json",
+    "constraints.lock.json",
+    "phase1-verification.json",
+    "toolchain.lock.json"
+  ],
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "pnpm run clean && tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "circuits:ensure": "node scripts/ensure-circom.mjs",
+    "circuits:compile": "node scripts/compile-circuits.mjs",
+    "circuits:test": "node --test test/circuits.test.mjs",
+    "ceremony:verify-phase1": "node scripts/verify-phase1.mjs",
+    "ceremony:phase2": "node scripts/phase2.mjs",
+    "artifacts:publish": "pnpm run build && node scripts/publish-artifact.mjs",
+    "ceremony:derive-beacon": "node scripts/derive-public-beacon.mjs",
+    "development:setup": "pnpm --filter @cyber-cipher/protocol-core build && pnpm run build && node scripts/dev-setup.mjs",
+    "test:e2e": "pnpm run development:setup && node --test --test-force-exit test/groth16.e2e.test.mjs",
+    "test": "pnpm --filter @cyber-cipher/protocol-core build && pnpm --filter @cyber-cipher/membership-core build && pnpm run build && pnpm run circuits:ensure && pnpm run circuits:compile && pnpm run circuits:test && node --test dist/test/*.test.js"
+  },
+  "dependencies": {
+    "@cyber-cipher/protocol-core": "workspace:*",
+    "poseidon-lite": "0.3.0",
+    "snarkjs": "0.7.6"
+  },
+  "devDependencies": {
+    "@cyber-cipher/membership-core": "workspace:*",
+    "circomlib": "2.0.5"
+  }
+}
