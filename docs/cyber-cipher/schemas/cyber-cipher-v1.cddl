@@ -199,6 +199,43 @@ handler-dek-aad = {
   4: bstr32 ; handlerKeyId
 }
 
+mailbox-challenge = {
+  1: 1,
+  2: bstr16, ; challengeId
+  3: bstr16, ; mailboxId
+  4: bstr32, ; random challenge
+  5: uint64, ; issuedAt milliseconds
+  6: uint64  ; expiresAt, at most 60 seconds later
+}
+
+mailbox-message-aad = {
+  1: 1,
+  2: bstr16, ; mailboxId
+  3: uint64, ; messageNumber
+  4: 1..2, ; user-to-handler or handler-to-user
+  5: bstr32, ; previousMessageHash
+  6: bstr32  ; recipientKeyId
+}
+
+mailbox-message = {
+  1: bytes .cbor mailbox-message-aad,
+  2: bstr32, ; HPKE encapsulated key
+  3: bytes   ; HPKE ciphertext and tag
+}
+
+dek-transfer-record = {
+  1: 1,
+  2: tstr, ; complaint UUID
+  3: bstr32, ; immutable ciphertext hash
+  4: tstr, ; old organization UUID
+  5: tstr, ; new organization UUID
+  6: bstr32, ; old handler key ID
+  7: bstr32, ; new handler key ID
+  8: tstr, ; attributable staff UUID
+  9: tstr, ; reason code
+  10: uint64 ; occurredAt milliseconds
+}
+
 receipt-body = {
   1: 1,
   2: bstr16,

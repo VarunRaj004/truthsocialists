@@ -91,6 +91,10 @@ Implemented so far:
   hash-chained Ed25519 tree heads, three prototype witnesses with 2-of-3
   finality, gossip fork evidence, public CBOR download/proof responses, durable
   tenant-bound storage, and offline receipt/log verification.
+- P-256 WebAuthn staff authentication, assignment-only handler access, signed
+  allowed/denied audit decisions, policy-versioned case lifecycles and SLA
+  controls, DEK-only cross-organization HPKE rewrap, and anonymous bidirectional
+  HPKE mailbox messaging with encrypted recovery bundles.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/membership-core`](packages/membership-core/README.md),
@@ -100,7 +104,9 @@ See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/complaint-core`](packages/complaint-core/README.md), and
 [`packages/complaint-store`](packages/complaint-store/README.md) for the
 executable code and current boundaries. Phase 6 is in
-[`packages/transparency-log`](packages/transparency-log/README.md). The network boundary is in
+[`packages/transparency-log`](packages/transparency-log/README.md), and
+[`packages/handler-core`](packages/handler-core/README.md) contains the Phase 7
+handler and anonymous-mailbox boundary. The current HTTP boundaries are in
 [`services/ida`](services/ida/README.md) and
 [`services/complaint-intake`](services/complaint-intake/README.md).
 

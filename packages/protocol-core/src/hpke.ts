@@ -65,6 +65,40 @@ export interface WrappedHandlerDek {
   wrappedDek: Uint8Array;
 }
 
+export interface HpkeCiphertext {
+  encapsulatedKey: Uint8Array;
+  ciphertext: Uint8Array;
+}
+
+export async function hpkeSeal(
+  recipientPublicKey: Uint8Array,
+  plaintext: Uint8Array,
+  info: Uint8Array,
+  aad: Uint8Array,
+): Promise<HpkeCiphertext> {
+  assertBytesLength("X25519 public key", recipientPublicKey, HPKE_X25519_KEY_BYTES);
+  const publicKey = await suite.kem.deserializePublicKey(recipientPublicKey);
+  const sealed = await suite.seal({ recipientPublicKey: publicKey, info }, plaintext, aad);
+  return { encapsulatedKey: new Uint8Array(sealed.enc), ciphertext: new Uint8Array(sealed.ct) };
+}
+
+export async function hpkeOpen(
+  recipientPrivateKey: Uint8Array,
+  value: HpkeCiphertext,
+  info: Uint8Array,
+  aad: Uint8Array,
+): Promise<Uint8Array> {
+  assertBytesLength("X25519 private key", recipientPrivateKey, HPKE_X25519_KEY_BYTES);
+  assertBytesLength("HPKE encapsulated key", value.encapsulatedKey, HPKE_ENCAPSULATED_KEY_BYTES);
+  const privateKey = await suite.kem.deserializePrivateKey(recipientPrivateKey);
+  try {
+    const opened = await suite.open(
+      { recipientKey: privateKey, enc: value.encapsulatedKey, info }, value.ciphertext, aad,
+    );
+    return new Uint8Array(opened);
+  } catch { throw new Error("HPKE ciphertext authentication failed"); }
+}
+
 export async function wrapHandlerDek(
   recipientPublicKey: Uint8Array,
   dek: Uint8Array,
@@ -72,11 +106,10 @@ export async function wrapHandlerDek(
 ): Promise<WrappedHandlerDek> {
   assertBytesLength("handler X25519 public key", recipientPublicKey, HPKE_X25519_KEY_BYTES);
   assertBytesLength("complaint DEK", dek, 32);
-  const publicKey = await suite.kem.deserializePublicKey(recipientPublicKey);
   const { info, aad } = contextBytes(context);
-  const sealed = await suite.seal({ recipientPublicKey: publicKey, info }, dek, aad);
-  const encapsulatedKey = new Uint8Array(sealed.enc);
-  const wrappedDek = new Uint8Array(sealed.ct);
+  const sealed = await hpkeSeal(recipientPublicKey, dek, info, aad);
+  const encapsulatedKey = sealed.encapsulatedKey;
+  const wrappedDek = sealed.ciphertext;
   assertBytesLength("HPKE encapsulated key", encapsulatedKey, HPKE_ENCAPSULATED_KEY_BYTES);
   assertBytesLength("HPKE wrapped DEK", wrappedDek, HPKE_WRAPPED_DEK_BYTES);
   return {
@@ -107,15 +140,12 @@ export async function unwrapHandlerDek(
     HPKE_ENCAPSULATED_KEY_BYTES,
   );
   assertBytesLength("HPKE wrapped DEK", envelope.wrappedDek, HPKE_WRAPPED_DEK_BYTES);
-  const privateKey = await suite.kem.deserializePrivateKey(recipientPrivateKey);
   const { info, aad } = contextBytes(context);
   try {
-    const plaintext = await suite.open(
-      { recipientKey: privateKey, enc: envelope.encapsulatedKey, info },
-      envelope.wrappedDek,
-      aad,
-    );
-    return assertBytesLength("unwrapped complaint DEK", new Uint8Array(plaintext), 32);
+    const plaintext = await hpkeOpen(recipientPrivateKey, {
+      encapsulatedKey: envelope.encapsulatedKey, ciphertext: envelope.wrappedDek,
+    }, info, aad);
+    return assertBytesLength("unwrapped complaint DEK", plaintext, 32);
   } catch {
     throw new Error("HPKE DEK authentication failed");
   }

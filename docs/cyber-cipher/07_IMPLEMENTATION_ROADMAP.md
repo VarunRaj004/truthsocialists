@@ -130,6 +130,18 @@ remain a production-readiness requirement.
 
 Exit gate: an unassigned handler cannot retrieve/decrypt a case; every allowed/denied access is attributable; transfer exposes only the DEK to authorized handler environments.
 
+Implementation status: complete for the experimental MVP. The executable
+`@cyber-cipher/handler-core` package verifies P-256 WebAuthn assertions with
+RP/origin, user-verification, one-use challenge, and counter checks; applies
+least-privilege assignment and lifecycle rules; signs allowed and denied access
+decisions; enforces SLA, extension, appeal, and non-destructive suppression
+semantics; confines DEK unwrapping to an authorized handler callback; and signs
+cross-organization DEK-only rewrap records. Complaint-specific Ed25519/X25519
+mailbox keys, 60-second challenges, bidirectional HPKE messages, ordering hashes,
+and encrypted recovery bundles are implemented with an append-only PostgreSQL
+schema. Production still requires attested authenticators, independently
+administered KMS/HSM keys, and an OS-level evidence-viewing sandbox.
+
 ## 10. Phase 8 - Redaction, community voting, and auditor comparison
 
 - Implement opt-in publication, automated PII scanning, handler draft, and independent reviewer approval.
@@ -247,11 +259,10 @@ ciphertext storage. PostgreSQL integration tests exercise success, replay,
 conflict, and rollback under the CI database. Production still requires an
 external cryptographic/security review and a managed object-store adapter.
 
-Three major implementation steps remain for the experimental MVP:
+Two major implementation steps remain for the experimental MVP:
 
-1. Build the Phase 7 handler workflow and anonymous mailbox.
-2. Build the Phase 8 redaction, community voting, and auditor comparison flow.
-3. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
+1. Build the Phase 8 redaction, community voting, and auditor comparison flow.
+2. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
    the MVP security and acceptance suite.
 
 Phase 9 external review and controlled-pilot hardening remains mandatory before
