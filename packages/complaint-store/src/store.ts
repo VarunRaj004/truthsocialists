@@ -247,7 +247,7 @@ export class PostgresComplaintStore {
       );
       const claimed = await client.query(
         `INSERT INTO complaint_store.submission_idempotency(idempotency_key,request_hash,created_at,expires_at)
-         VALUES ($1::uuid,$2,$3,$3 + interval '24 hours')
+         VALUES ($1::uuid,$2,$3::timestamptz,$3::timestamptz + interval '24 hours')
          ON CONFLICT DO NOTHING RETURNING idempotency_key`,
         [value.idempotencyKey, Buffer.from(value.requestHash), value.acceptedAt],
       );
