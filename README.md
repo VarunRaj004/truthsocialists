@@ -80,13 +80,18 @@ Implemented so far:
   NFC text normalization, privacy-neutral filenames, deterministic-CBOR manifests,
   salted commitments, AES-256-GCM package encryption, and handler-specific HPKE
   DEK wrapping with authenticated routing context.
+- tenant-bound, signed 60-second proof-session leases and a PostgreSQL complaint
+  acceptance transaction that atomically spends the entitlement/nullifier,
+  records encrypted-object metadata, queues the initial transparency-log event,
+  signs the randomized receipt, and consumes the challenge only on success.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/membership-core`](packages/membership-core/README.md),
 [`packages/identity-store`](packages/identity-store/README.md), and
 [`packages/matter-registry`](packages/matter-registry/README.md), and
 [`packages/zk-circuits`](packages/zk-circuits/README.md), and
-[`packages/complaint-core`](packages/complaint-core/README.md) for the
+[`packages/complaint-core`](packages/complaint-core/README.md), and
+[`packages/complaint-store`](packages/complaint-store/README.md) for the
 executable code and current boundaries. The network boundary is in
 [`services/ida`](services/ida/README.md).
 

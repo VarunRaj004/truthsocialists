@@ -26,6 +26,19 @@ importers:
         specifier: workspace:*
         version: link:../protocol-core
 
+  packages/complaint-store:
+    dependencies:
+      '@cyber-cipher/protocol-core':
+        specifier: workspace:*
+        version: link:../protocol-core
+      pg:
+        specifier: 8.23.0
+        version: 8.23.0
+    devDependencies:
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+
   packages/identity-store:
     dependencies:
       '@cyber-cipher/membership-core':

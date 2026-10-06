@@ -193,7 +193,7 @@ Do not start public UI polishing before these iterations pass their security tes
 
 A feature is complete only when its protocol/schema is versioned, positive and negative tests exist, privacy-forbidden fields are tested, logs contain no sensitive values, failure is atomic, documentation matches behavior, and the acceptance matrix traces it to an SRS requirement.
 
-## 15. Current MVP build status (2026-10-01)
+## 15. Current MVP build status (2026-10-06)
 
 The TypeScript protocol core, in-memory membership/recovery model, tenant-bound
 PostgreSQL enrollment and recovery transactions, durable 30-second signed
@@ -225,8 +225,13 @@ evidence policy enforcement, NFC normalization, deterministic manifests, salted
 commitments, AES-256-GCM content encryption, and handler-specific HPKE DEK
 wrapping. Tenant-bound, signed 60-second proof-session leases now enforce the
 current root, expiration, single in-flight use, retry after rollback, and
-consumption only after success. Durable atomic server acceptance, receipts, and
-object storage remain in progress.
+consumption only after success. The tenant-bound PostgreSQL acceptance store now
+locks the matter and lease, runs the RSA/ZK authorization boundary, atomically
+spends the entitlement serial and complaint nullifier, records encrypted-object
+metadata, writes the canonical initial-log outbox entry, signs and verifies the
+randomized Ed25519 receipt, and consumes the challenge. Any failure rolls back
+all effects. The HTTP intake boundary, durable object storage, and concrete
+RSA/Groth16 verifier wiring remain in progress.
 
 Five major implementation steps remain for the experimental MVP:
 

@@ -1,0 +1,29 @@
+{
+  "name": "@cyber-cipher/complaint-store",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tenant-bound atomic PostgreSQL complaint acceptance",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": ["dist", "sql"],
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prebuild": "pnpm --filter @cyber-cipher/protocol-core build",
+    "build": "pnpm run clean && tsc -p tsconfig.json",
+    "test": "pnpm run build && node --test dist/test/*.test.js",
+    "precheck": "pnpm --filter @cyber-cipher/protocol-core build",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cyber-cipher/protocol-core": "workspace:*",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}
