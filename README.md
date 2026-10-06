@@ -84,6 +84,9 @@ Implemented so far:
   acceptance transaction that atomically spends the entitlement/nullifier,
   records encrypted-object metadata, queues the initial transparency-log event,
   signs the randomized receipt, and consumes the challenge only on success.
+- anonymous deterministic-CBOR complaint HTTP endpoints, durable
+  content-addressed ciphertext storage, fixed RSA-entitlement/lease/Groth16
+  verification order, and transaction-coupled 24-hour request idempotency.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/membership-core`](packages/membership-core/README.md),
@@ -93,6 +96,7 @@ See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/complaint-core`](packages/complaint-core/README.md), and
 [`packages/complaint-store`](packages/complaint-store/README.md) for the
 executable code and current boundaries. The network boundary is in
-[`services/ida`](services/ida/README.md).
+[`services/ida`](services/ida/README.md) and
+[`services/complaint-intake`](services/complaint-intake/README.md).
 
 This is not production-ready software. Real deployment requires external cryptographic, penetration, privacy, accessibility, legal, and operational reviews.

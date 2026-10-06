@@ -28,7 +28,8 @@ export type ComplaintStoreErrorCode =
   | "PROOF_SESSION_EXPIRED"
   | "LEASE_MISMATCH"
   | "ENTITLEMENT_SPENT"
-  | "NULLIFIER_USED";
+  | "NULLIFIER_USED"
+  | "IDEMPOTENCY_CONFLICT";
 
 export class ComplaintStoreError extends Error {
   constructor(readonly code: ComplaintStoreErrorCode, message: string, options?: ErrorOptions) {
@@ -76,6 +77,8 @@ export interface LockedComplaintAuthorization {
 }
 
 export interface AcceptComplaintInput {
+  idempotencyKey: string;
+  requestHash: Uint8Array;
   complaintId: string;
   eventId: string;
   matterId: string;
@@ -127,6 +130,15 @@ interface ProofSessionRow {
   signed_lease_hash: Buffer;
   consumed_at: Date | null;
   expired: boolean;
+}
+
+interface IdempotencyRow {
+  request_hash: Buffer;
+  complaint_id: string | null;
+  receipt_id: Buffer | null;
+  signed_receipt_cbor: Buffer | null;
+  log_entry_hash: Buffer | null;
+  accepted_at: Date | null;
 }
 
 function uuid(name: string, value: string, v4 = false): string {
@@ -228,6 +240,45 @@ export class PostgresComplaintStore {
     const value = this.validateAcceptance(input);
     return this.serializable(async (client) => {
       await this.assertTenant(client);
+      await client.query(
+        `DELETE FROM complaint_store.submission_idempotency
+         WHERE idempotency_key=$1::uuid AND expires_at <= $2`,
+        [value.idempotencyKey, value.acceptedAt],
+      );
+      const claimed = await client.query(
+        `INSERT INTO complaint_store.submission_idempotency(idempotency_key,request_hash,created_at,expires_at)
+         VALUES ($1::uuid,$2,$3,$3 + interval '24 hours')
+         ON CONFLICT DO NOTHING RETURNING idempotency_key`,
+        [value.idempotencyKey, Buffer.from(value.requestHash), value.acceptedAt],
+      );
+      if (claimed.rowCount !== 1) {
+        const replay = await client.query<IdempotencyRow>(
+          `SELECT i.request_hash,i.complaint_id,r.receipt_id,r.signed_receipt_cbor,
+                  c.initial_log_entry_hash AS log_entry_hash,c.accepted_at
+           FROM complaint_store.submission_idempotency i
+           LEFT JOIN complaint_store.complaint_record c ON c.complaint_id=i.complaint_id
+           LEFT JOIN complaint_store.receipt_record r ON r.complaint_id=i.complaint_id
+           WHERE i.idempotency_key=$1::uuid FOR UPDATE OF i`,
+          [value.idempotencyKey],
+        );
+        const prior = replay.rows[0];
+        if (prior === undefined || !equal(new Uint8Array(prior.request_hash), value.requestHash)) {
+          throw new ComplaintStoreError("IDEMPOTENCY_CONFLICT", "idempotency key was reused with different request bytes");
+        }
+        if (
+          prior.complaint_id === null || prior.receipt_id === null || prior.signed_receipt_cbor === null ||
+          prior.log_entry_hash === null || prior.accepted_at === null
+        ) {
+          throw new Error("idempotency record is incomplete");
+        }
+        return {
+          complaintId: prior.complaint_id,
+          receiptId: new Uint8Array(prior.receipt_id),
+          signedReceiptCbor: new Uint8Array(prior.signed_receipt_cbor),
+          logEntryHash: new Uint8Array(prior.log_entry_hash),
+          acceptedAt: new Date(prior.accepted_at),
+        };
+      }
       const matterResult = await client.query<MatterRow>(
         `SELECT * FROM complaint_store.matter
          WHERE matter_id=$1::uuid AND version=$2 FOR UPDATE`,
@@ -312,6 +363,11 @@ export class PostgresComplaintStore {
         "UPDATE complaint_store.proof_session SET consumed_at=$2 WHERE challenge_id=$1",
         [Buffer.from(value.challengeId), value.acceptedAt],
       );
+      await client.query(
+        `UPDATE complaint_store.submission_idempotency SET complaint_id=$2::uuid
+         WHERE idempotency_key=$1::uuid`,
+        [value.idempotencyKey, value.complaintId],
+      );
       return {
         complaintId: value.complaintId,
         receiptId: value.receiptId.slice(),
@@ -339,6 +395,8 @@ export class PostgresComplaintStore {
   }
 
   private validateAcceptance(input: AcceptComplaintInput): AcceptComplaintInput {
+    const idempotencyKey = uuid("idempotencyKey", input.idempotencyKey, true);
+    assertBytesLength("requestHash", input.requestHash, 32);
     const complaintId = uuid("complaintId", input.complaintId, true);
     const eventId = uuid("eventId", input.eventId, true);
     const matterId = uuid("matterId", input.matterId, true);
@@ -363,7 +421,7 @@ export class PostgresComplaintStore {
     if (!Number.isSafeInteger(input.ciphertextSize) || input.ciphertextSize < 17 || input.ciphertextSize > 104_857_616) {
       throw new RangeError("ciphertextSize is outside the encrypted complaint limit");
     }
-    return { ...input, complaintId, eventId, matterId, acceptedAt: validDate("acceptedAt", input.acceptedAt) };
+    return { ...input, idempotencyKey, complaintId, eventId, matterId, acceptedAt: validDate("acceptedAt", input.acceptedAt) };
   }
 
   private async signReceipt(input: AcceptComplaintInput, logEntryHash: Uint8Array): Promise<Uint8Array> {

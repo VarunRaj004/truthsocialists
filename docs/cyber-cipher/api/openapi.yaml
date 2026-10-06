@@ -94,17 +94,9 @@ paths:
   /complaints/v1/proof-sessions:
     post:
       operationId: createComplaintProofSession
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [purpose]
-              properties:
-                purpose: {type: string, const: complaint}
       responses:
         '201': {$ref: '#/components/responses/CborObject'}
+        '400': {$ref: '#/components/responses/GenericFailure'}
         '429': {$ref: '#/components/responses/GenericFailure'}
   /complaints/v1/complaints:
     post:

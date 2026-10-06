@@ -111,6 +111,21 @@ importers:
         specifier: 2.0.5
         version: 2.0.5
 
+  services/complaint-intake:
+    dependencies:
+      '@cyber-cipher/complaint-store':
+        specifier: workspace:*
+        version: link:../../packages/complaint-store
+      '@cyber-cipher/matter-registry':
+        specifier: workspace:*
+        version: link:../../packages/matter-registry
+      '@cyber-cipher/protocol-core':
+        specifier: workspace:*
+        version: link:../../packages/protocol-core
+      '@cyber-cipher/zk-circuits':
+        specifier: workspace:*
+        version: link:../../packages/zk-circuits
+
   services/ida:
     dependencies:
       '@cyber-cipher/identity-store':

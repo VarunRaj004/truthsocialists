@@ -114,6 +114,41 @@ proof-envelope = {
   5: [+ field32] ; ordered public signals
 }
 
+; Wire body accepted by POST /complaints/v1/complaints. The Groth16 proof is
+; opaque canonical UTF-8 JSON for the pinned snarkjs backend; public signals
+; remain canonical BN254 field byte strings on the protocol boundary.
+complaint-submission-request = {
+  1: 1,
+  2: uuid, ; complaintId
+  3: uuid, ; matterId
+  4: uint32, ; matterVersion
+  5: bytes, ; canonical signed proof-lease CBOR
+  6: bstr32, ; matterKeyId
+  7: bstr16, ; entitlement serial
+  8: field32, ; entitlement personCommitment
+  9: bstr32, ; RFC 9474 randomized prefix
+  10: bytes .size 384, ; RSA-3072 signature
+  11: bstr32, ; complaint circuit artifactId
+  12: uint32, ; circuitVersion
+  13: [field32, field32, field32, field32, field32, field32, field32, field32],
+  14: bytes, ; bounded Groth16 proof JSON
+  15: bstr32, ; complaintCommitment
+  16: bytes, ; AES-256-GCM ciphertext and tag
+  17: bytes .size 12, ; AES-GCM nonce
+  18: bstr32, ; HPKE encapsulated key
+  19: bstr48, ; HPKE-wrapped DEK and tag
+  20: bstr32 ; handlerKeyId
+}
+
+complaint-submission-response = {
+  1: 1,
+  2: uuid,
+  3: bstr16, ; receiptId
+  4: bytes, ; canonical signed receipt CBOR
+  5: bstr32, ; initial log-entry hash
+  6: uint64 ; acceptedAt milliseconds
+}
+
 attachment-record = {
   1: uint32, ; zero-based index
   2: uint64, ; size

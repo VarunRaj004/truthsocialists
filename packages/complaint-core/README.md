@@ -1,6 +1,6 @@
 # Complaint core
 
-This package starts the Phase 5 client-side complaint-intake slice. It validates
+This package implements the Phase 5 client-side complaint-intake slice. It validates
 the prototype evidence allowlist and size limits, normalizes complaint text to
 NFC, generates privacy-neutral attachment names, builds the deterministic-CBOR
 manifest, computes the 32-byte-salted SHA-256 commitment, encrypts the complete
@@ -18,8 +18,9 @@ proof-session service that issues exactly 60-second current-root leases, rejects
 stale roots and cross-tenant use, prevents concurrent replay, and marks a
 challenge consumed only after the supplied submission transaction succeeds.
 
-The included proof-session store is deliberately in-memory. The next Phase 5
-slice replaces that boundary with the PostgreSQL transaction that atomically
-stores ciphertext, spends the entitlement/nullifier, consumes the challenge,
-creates the initial log outbox record, and issues the signed receipt. Full
-metadata stripping, robust PDF sanitization, and object storage also remain.
+The included proof-session store remains a fast client/unit-test model. The
+durable issuer, PostgreSQL transaction, RSA/Groth16 authorization, idempotent
+HTTP boundary, signed receipts, and content-addressed object storage are in
+`services/complaint-intake` and `packages/complaint-store`. Original evidence
+remains encrypted and restricted; separately sanitized public derivatives are a
+Phase 8 responsibility.

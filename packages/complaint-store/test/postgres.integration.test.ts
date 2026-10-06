@@ -63,6 +63,8 @@ test("PostgreSQL accepts every complaint effect atomically", {
     });
     const signer = receiptSigner();
     const input: AcceptComplaintInput = {
+      idempotencyKey: randomUUID(),
+      requestHash: new Uint8Array(32).fill(0x50),
       complaintId: randomUUID(),
       eventId: randomUUID(),
       matterId,
@@ -106,6 +108,15 @@ test("PostgreSQL accepts every complaint effect atomically", {
         (SELECT count(*) FROM complaint_store.used_nullifier)::text nullifiers`,
     );
     assert.deepEqual(counts.rows[0], { complaints: "1", receipts: "1", outbox: "1", spent: "1", nullifiers: "1" });
+    const replay = await store.acceptComplaint({
+      ...input,
+      authorize: () => { assert.fail("idempotent replay must not reauthorize"); },
+    });
+    assert.deepEqual(replay.signedReceiptCbor, accepted.signedReceiptCbor);
+    await assert.rejects(store.acceptComplaint({
+      ...input,
+      requestHash: new Uint8Array(32).fill(0x99),
+    }), (error: unknown) => error instanceof ComplaintStoreError && error.code === "IDEMPOTENCY_CONFLICT");
 
     const rejectedChallenge = new Uint8Array(16).fill(0x42);
     const rejectedLease = new Uint8Array([0xa1, 0x01, 0x02]);
@@ -119,6 +130,8 @@ test("PostgreSQL accepts every complaint effect atomically", {
     });
     await assert.rejects(store.acceptComplaint({
       ...input,
+      idempotencyKey: randomUUID(),
+      requestHash: new Uint8Array(32).fill(0x53),
       complaintId: randomUUID(),
       eventId: randomUUID(),
       challengeId: rejectedChallenge,
@@ -135,7 +148,7 @@ test("PostgreSQL accepts every complaint effect atomically", {
       [Buffer.from(rejectedChallenge), Buffer.from(new Uint8Array(16).fill(0x52))],
     );
     assert.deepEqual(rollback.rows[0], { consumed: false, spent: "0" });
-    await assert.rejects(store.acceptComplaint(input), (error: unknown) =>
+    await assert.rejects(store.acceptComplaint({ ...input, idempotencyKey: randomUUID() }), (error: unknown) =>
       error instanceof ComplaintStoreError && error.code === "PROOF_SESSION_CONSUMED");
   } finally {
     await pool.end();

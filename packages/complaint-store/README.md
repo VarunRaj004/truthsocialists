@@ -20,3 +20,8 @@ times, so the authorization callback and receipt signer must remain
 side-effect-free. Ciphertext bytes live in the object-store boundary; the
 database stores only its bounded `object://` URI, size, hash, nonce, HPKE
 envelope, and routing key identifiers.
+
+A UUIDv4 idempotency key and SHA-256 request hash are reserved inside the same
+transaction. Identical committed retries return the original receipt without
+rerunning authorization; changed bytes conflict. Reservations expire after 24
+hours, and failed transactions leave no reservation behind.

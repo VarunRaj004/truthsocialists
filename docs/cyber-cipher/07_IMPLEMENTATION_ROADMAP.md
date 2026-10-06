@@ -220,7 +220,7 @@ The Phase 4 circuit implementation and a guarded, single-operator ceremony
 simulation are complete. Independent contributors, a future public beacon, and
 physical mobile benchmarks remain production-readiness gates.
 
-Phase 5 has started with the client-side encrypted complaint preparation slice:
+Phase 5 is implemented for the experimental MVP. The client-side slice provides
 evidence policy enforcement, NFC normalization, deterministic manifests, salted
 commitments, AES-256-GCM content encryption, and handler-specific HPKE DEK
 wrapping. Tenant-bound, signed 60-second proof-session leases now enforce the
@@ -230,16 +230,20 @@ locks the matter and lease, runs the RSA/ZK authorization boundary, atomically
 spends the entitlement serial and complaint nullifier, records encrypted-object
 metadata, writes the canonical initial-log outbox entry, signs and verifies the
 randomized Ed25519 receipt, and consumes the challenge. Any failure rolls back
-all effects. The HTTP intake boundary, durable object storage, and concrete
-RSA/Groth16 verifier wiring remain in progress.
+all effects. The anonymous deterministic-CBOR HTTP boundary now adds
+transaction-coupled 24-hour idempotency, a fixed RSA-entitlement then Groth16
+verification order, an artifact allowlist, native HTTPS configuration, an
+explicit test-only onion transport exception, and SHA-256-addressed durable
+ciphertext storage. PostgreSQL integration tests exercise success, replay,
+conflict, and rollback under the CI database. Production still requires an
+external cryptographic/security review and a managed object-store adapter.
 
-Five major implementation steps remain for the experimental MVP:
+Four major implementation steps remain for the experimental MVP:
 
-1. Build the Phase 5 encrypted, atomic complaint-intake and receipt flow.
-2. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
-3. Build the Phase 7 handler workflow and anonymous mailbox.
-4. Build the Phase 8 redaction, community voting, and auditor comparison flow.
-5. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
+1. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
+2. Build the Phase 7 handler workflow and anonymous mailbox.
+3. Build the Phase 8 redaction, community voting, and auditor comparison flow.
+4. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
    the MVP security and acceptance suite.
 
 Phase 9 external review and controlled-pilot hardening remains mandatory before
