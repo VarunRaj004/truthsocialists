@@ -111,6 +111,15 @@ Demo: show valid receipt/inclusion, mutate a leaf, present divergent heads, and 
 
 Exit gate: mutation/fork proofs are rejected, one unavailable witness does not stop finality, and two unavailable/disagreeing witnesses produce a visible non-final state.
 
+Implementation status: complete for the experimental MVP. The executable
+`@cyber-cipher/transparency-log` package includes RFC 6962 construction and
+proofs, operator-signed and hash-chained tree heads, three independently keyed
+prototype witnesses, 2-of-3 finality with retryable pending heads, gossip fork
+evidence, canonical-CBOR public download/proof responses, tenant-bound durable
+storage, and offline full-log/receipt verification. Tests demonstrate mutation,
+fork, and witness-outage behavior. Independent organizations and infrastructure
+remain a production-readiness requirement.
+
 ## 9. Phase 7 - Handler workflow and anonymous mailbox
 
 - Add WebAuthn staff enrollment and least-privilege authorization.
@@ -238,12 +247,11 @@ ciphertext storage. PostgreSQL integration tests exercise success, replay,
 conflict, and rollback under the CI database. Production still requires an
 external cryptographic/security review and a managed object-store adapter.
 
-Four major implementation steps remain for the experimental MVP:
+Three major implementation steps remain for the experimental MVP:
 
-1. Build the Phase 6 transparency log, inclusion proofs, and prototype witnesses.
-2. Build the Phase 7 handler workflow and anonymous mailbox.
-3. Build the Phase 8 redaction, community voting, and auditor comparison flow.
-4. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
+1. Build the Phase 7 handler workflow and anonymous mailbox.
+2. Build the Phase 8 redaction, community voting, and auditor comparison flow.
+3. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
    the MVP security and acceptance suite.
 
 Phase 9 external review and controlled-pilot hardening remains mandatory before

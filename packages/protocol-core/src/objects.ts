@@ -136,6 +136,26 @@ export function receiptBody(input: ReceiptBodyInput): Map<CborKey, CborValue> {
   ]);
 }
 
+export interface TreeHeadBodyInput {
+  treeSize: bigint;
+  rootHash: Uint8Array;
+  timestamp: bigint;
+  previousFinalizedTreeHeadHash: Uint8Array;
+  logKeyId: Uint8Array;
+}
+
+export function treeHeadBody(input: TreeHeadBodyInput): Map<CborKey, CborValue> {
+  if (input.treeSize === 0n) throw new RangeError("tree head must cover at least one leaf");
+  return integerMap([
+    [1, PROTOCOL_VERSION],
+    [2, assertUint("treeSize", input.treeSize, UINT64_MAX)],
+    [3, assertBytesLength("rootHash", input.rootHash, 32)],
+    [4, assertUint("timestamp", input.timestamp, UINT64_MAX)],
+    [5, assertBytesLength("previousFinalizedTreeHeadHash", input.previousFinalizedTreeHeadHash, 32)],
+    [6, assertBytesLength("logKeyId", input.logKeyId, 32)],
+  ]);
+}
+
 export interface MembershipCheckpointBodyInput {
   epoch: bigint;
   root: Uint8Array;

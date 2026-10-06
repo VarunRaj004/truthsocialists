@@ -17,11 +17,13 @@ import {
   proofLeaseBody,
   recoveryChallengeBody,
   receiptBody,
+  treeHeadBody,
   type MembershipCheckpointBodyInput,
   type ProofLeaseBodyInput,
   type ProofLeasePurposeValue,
   type RecoveryChallengeBodyInput,
   type ReceiptBodyInput,
+  type TreeHeadBodyInput,
 } from "./objects.js";
 import { assertBytesLength } from "./validation.js";
 
@@ -118,6 +120,39 @@ export function verifyReceipt(
     !bytesEqual(value.complaintCommitment, expected.complaintCommitment)
   ) {
     throw new Error("receipt complaint commitment does not match");
+  }
+  return value;
+}
+
+export interface TreeHeadVerificationExpectation {
+  previousFinalizedTreeHeadHash?: Uint8Array;
+  minimumTreeSize?: bigint;
+}
+
+export function verifyTreeHead(
+  encoded: Uint8Array,
+  publicKey: Uint8Array,
+  expected: TreeHeadVerificationExpectation = {},
+): TreeHeadBodyInput {
+  const decoded = decodeSignedBody(encoded, [1n, 2n, 3n, 4n, 5n, 6n]);
+  const value: TreeHeadBodyInput = {
+    treeSize: uintValue(decoded.body, 2n),
+    rootHash: bytesValue(decoded.body, 3n, 32),
+    timestamp: uintValue(decoded.body, 4n),
+    previousFinalizedTreeHeadHash: bytesValue(decoded.body, 5n, 32),
+    logKeyId: bytesValue(decoded.body, 6n, 32),
+  };
+  treeHeadBody(value);
+  if (uintValue(decoded.body, 1n) !== 1n) throw new Error("unsupported tree-head protocol version");
+  verifyDedicatedKey("tree-head", decoded, publicKey, value.logKeyId);
+  if (
+    expected.previousFinalizedTreeHeadHash !== undefined &&
+    !bytesEqual(value.previousFinalizedTreeHeadHash, expected.previousFinalizedTreeHeadHash)
+  ) {
+    throw new Error("tree-head predecessor does not match");
+  }
+  if (expected.minimumTreeSize !== undefined && value.treeSize < expected.minimumTreeSize) {
+    throw new Error("tree head is stale");
   }
   return value;
 }

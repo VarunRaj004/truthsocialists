@@ -87,6 +87,10 @@ Implemented so far:
 - anonymous deterministic-CBOR complaint HTTP endpoints, durable
   content-addressed ciphertext storage, fixed RSA-entitlement/lease/Groth16
   verification order, and transaction-coupled 24-hour request idempotency.
+- RFC 6962 transparency-tree construction, inclusion/consistency proofs,
+  hash-chained Ed25519 tree heads, three prototype witnesses with 2-of-3
+  finality, gossip fork evidence, public CBOR download/proof responses, durable
+  tenant-bound storage, and offline receipt/log verification.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/membership-core`](packages/membership-core/README.md),
@@ -95,7 +99,8 @@ See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/zk-circuits`](packages/zk-circuits/README.md), and
 [`packages/complaint-core`](packages/complaint-core/README.md), and
 [`packages/complaint-store`](packages/complaint-store/README.md) for the
-executable code and current boundaries. The network boundary is in
+executable code and current boundaries. Phase 6 is in
+[`packages/transparency-log`](packages/transparency-log/README.md). The network boundary is in
 [`services/ida`](services/ida/README.md) and
 [`services/complaint-intake`](services/complaint-intake/README.md).
 

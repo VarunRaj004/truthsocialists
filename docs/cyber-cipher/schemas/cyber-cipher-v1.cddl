@@ -239,10 +239,16 @@ tree-head-body = {
   6: bstr32 ; logKeyId
 }
 
-tree-head = {
+operator-tree-head = {
   1: tree-head-body,
-  2: bstr64, ; log signature
-  3: [+ witness-signature]
+  2: bstr64 ; log signature
+}
+
+tree-head = operator-tree-head
+
+finalized-tree-head = {
+  1: bytes .cbor operator-tree-head,
+  2: [+ witness-signature]
 }
 
 witness-signature = {
