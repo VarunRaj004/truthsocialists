@@ -13,6 +13,13 @@ Client plaintext and the DEK are never returned by the preparation API; the DEK
 buffer is overwritten after wrapping.
 
 This first slice performs conservative magic-byte checks and rejects known PDF
-active-content markers. Full metadata stripping, robust PDF sanitization, proof
-leases, atomic server-side acceptance, signed receipts, and object storage are
-the remaining Phase 5 work.
+active-content markers. It also includes a tenant-bound, Ed25519-signed complaint
+proof-session service that issues exactly 60-second current-root leases, rejects
+stale roots and cross-tenant use, prevents concurrent replay, and marks a
+challenge consumed only after the supplied submission transaction succeeds.
+
+The included proof-session store is deliberately in-memory. The next Phase 5
+slice replaces that boundary with the PostgreSQL transaction that atomically
+stores ciphertext, spends the entitlement/nullifier, consumes the challenge,
+creates the initial log outbox record, and issues the signed receipt. Full
+metadata stripping, robust PDF sanitization, and object storage also remain.

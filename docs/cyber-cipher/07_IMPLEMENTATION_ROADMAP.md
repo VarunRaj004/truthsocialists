@@ -223,8 +223,10 @@ physical mobile benchmarks remain production-readiness gates.
 Phase 5 has started with the client-side encrypted complaint preparation slice:
 evidence policy enforcement, NFC normalization, deterministic manifests, salted
 commitments, AES-256-GCM content encryption, and handler-specific HPKE DEK
-wrapping. Proof-session issuance, atomic server acceptance, receipts, and object
-storage remain in progress.
+wrapping. Tenant-bound, signed 60-second proof-session leases now enforce the
+current root, expiration, single in-flight use, retry after rollback, and
+consumption only after success. Durable atomic server acceptance, receipts, and
+object storage remain in progress.
 
 Five major implementation steps remain for the experimental MVP:
 
