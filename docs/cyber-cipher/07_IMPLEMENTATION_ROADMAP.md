@@ -152,6 +152,18 @@ administered KMS/HSM keys, and an OS-level evidence-viewing sandbox.
 
 Exit gate: no raw attachment/plaintext enters the public store; a user cannot vote twice for one complaint, including after device replacement preserving `P`.
 
+Implementation status: complete for the experimental MVP. The executable
+`@cyber-cipher/community-core` package requires complainant opt-in, normalized
+derivative-only payloads, automated PII screening, and independent reviewer
+approval before publication. Commitments bind the approved payload to the
+private complaint commitment and ciphertext hash. The existing Groth16 vote
+circuit is integrated with signed current-root vote leases, fixed public inputs,
+complaint-scoped persistent-person nullifiers, seven-day windows, quorum 10, and
+the 60% support/oppose rule. Public responses expose only approved derivatives,
+aggregates, and provenance. Signed auditor comparisons support justification,
+freeze, escalation, and unfreeze without changing or deleting the private case.
+PostgreSQL integration enforces unique nullifiers and append-only votes/events.
+
 ## 11. Phase 9 - Hardening and controlled pilot
 
 - Complete the full test plan, privacy data inventory, DPIA-style review, and accessibility/language testing.
@@ -259,10 +271,9 @@ ciphertext storage. PostgreSQL integration tests exercise success, replay,
 conflict, and rollback under the CI database. Production still requires an
 external cryptographic/security review and a managed object-store adapter.
 
-Two major implementation steps remain for the experimental MVP:
+One major implementation step remains for the experimental MVP:
 
-1. Build the Phase 8 redaction, community voting, and auditor comparison flow.
-2. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
+1. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
    the MVP security and acceptance suite.
 
 Phase 9 external review and controlled-pilot hardening remains mandatory before

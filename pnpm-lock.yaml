@@ -20,6 +20,25 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/community-core:
+    dependencies:
+      '@cyber-cipher/handler-core':
+        specifier: workspace:*
+        version: link:../handler-core
+      '@cyber-cipher/protocol-core':
+        specifier: workspace:*
+        version: link:../protocol-core
+      '@cyber-cipher/zk-circuits':
+        specifier: workspace:*
+        version: link:../zk-circuits
+      pg:
+        specifier: 8.23.0
+        version: 8.23.0
+    devDependencies:
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+
   packages/complaint-core:
     dependencies:
       '@cyber-cipher/protocol-core':

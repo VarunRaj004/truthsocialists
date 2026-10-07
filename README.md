@@ -95,6 +95,10 @@ Implemented so far:
   allowed/denied audit decisions, policy-versioned case lifecycles and SLA
   controls, DEK-only cross-organization HPKE rewrap, and anonymous bidirectional
   HPKE mailbox messaging with encrypted recovery bundles.
+- opt-in public derivatives with PII screening and independent review,
+  Groth16-backed anonymous community votes with seven-day/quorum/threshold rules,
+  unique complaint-scoped nullifiers, and signed auditor comparison, freeze, and
+  escalation events that cannot alter the private case.
 
 See [`packages/protocol-core`](packages/protocol-core/README.md),
 [`packages/membership-core`](packages/membership-core/README.md),
@@ -106,7 +110,8 @@ See [`packages/protocol-core`](packages/protocol-core/README.md),
 executable code and current boundaries. Phase 6 is in
 [`packages/transparency-log`](packages/transparency-log/README.md), and
 [`packages/handler-core`](packages/handler-core/README.md) contains the Phase 7
-handler and anonymous-mailbox boundary. The current HTTP boundaries are in
+handler and anonymous-mailbox boundary. Phase 8 is in
+[`packages/community-core`](packages/community-core/README.md). The current HTTP boundaries are in
 [`services/ida`](services/ida/README.md) and
 [`services/complaint-intake`](services/complaint-intake/README.md).
 

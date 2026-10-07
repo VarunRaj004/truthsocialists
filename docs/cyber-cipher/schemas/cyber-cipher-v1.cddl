@@ -236,6 +236,33 @@ dek-transfer-record = {
   10: uint64 ; occurredAt milliseconds
 }
 
+public-redaction = {
+  1: 1,
+  2: tstr, ; normalized summary
+  3: tstr, ; category
+  4: [* {
+    1: "image/png" / "image/jpeg" / "application/pdf",
+    2: tstr, ; content-addressed sanitized derivative URI
+    3: bstr32,
+    4: uint64
+  }]
+}
+
+auditor-assessment = {
+  1: 1,
+  2: tstr, ; assessment UUID
+  3: tstr, ; complaint UUID
+  4: tstr, ; redaction UUID
+  5: 1..4, ; aligned/conflicting/inconclusive/handler-pending
+  6: 0..4, ; none/justification/freeze/escalate/unfreeze
+  7: tstr, ; reason code
+  8: tstr, ; attributable auditor UUID
+  9: uint64,
+  10: 1..3, ; substantiated/unsubstantiated/pending
+  11: "SUPPORT" / "OPPOSE" / "INCONCLUSIVE",
+  12: bstr32 ; canonical aggregate result hash
+}
+
 receipt-body = {
   1: 1,
   2: bstr16,

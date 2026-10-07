@@ -1,7 +1,7 @@
 import { createPublicKey, randomBytes, verify } from "node:crypto";
 import { concatBytes, sha256 } from "@cyber-cipher/protocol-core";
 
-export type StaffRole = "TRIAGE" | "HANDLER" | "SUPERVISOR" | "AUDITOR";
+export type StaffRole = "TRIAGE" | "HANDLER" | "SUPERVISOR" | "REVIEWER" | "AUDITOR";
 
 export interface StaffCredential {
   staffId: string;
