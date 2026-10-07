@@ -10,7 +10,9 @@
   "scripts": {
     "build": "pnpm -r --workspace-concurrency=1 build",
     "test": "pnpm -r --workspace-concurrency=1 test",
-    "check": "pnpm -r --workspace-concurrency=1 check"
+    "check": "pnpm -r --workspace-concurrency=1 check",
+    "check:deployment": "node scripts/validate-mvp-deployment.mjs",
+    "acceptance:mvp": "pnpm check:deployment && pnpm check && pnpm test"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

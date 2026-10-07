@@ -20,6 +20,16 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  apps/mvp-demo:
+    dependencies:
+      pg:
+        specifier: 8.23.0
+        version: 8.23.0
+    devDependencies:
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+
   packages/community-core:
     dependencies:
       '@cyber-cipher/handler-core':

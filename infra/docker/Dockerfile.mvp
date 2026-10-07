@@ -1,0 +1,18 @@
+FROM node:24-bookworm-slim AS build
+
+WORKDIR /workspace
+RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/mvp-demo ./apps/mvp-demo
+RUN pnpm install --frozen-lockfile --filter @cyber-cipher/mvp-demo...
+RUN pnpm --filter @cyber-cipher/mvp-demo build
+
+FROM node:24-bookworm-slim AS runtime
+
+ENV NODE_ENV=production
+WORKDIR /workspace
+COPY --from=build --chown=node:node /workspace/node_modules ./node_modules
+COPY --from=build --chown=node:node /workspace/apps/mvp-demo ./apps/mvp-demo
+USER node
+EXPOSE 8080
+CMD ["node", "apps/mvp-demo/dist/src/main.js"]

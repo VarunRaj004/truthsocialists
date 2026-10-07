@@ -2,7 +2,7 @@
 
 Cyber Cipher is an eligibility-gated anonymous complaint platform designed around unlinkable blind entitlements, private active-membership proofs, encrypted handler routing, recoverable device revocation, anonymous follow-up, community assessment, and publicly verifiable transparency logs.
 
-This repository currently contains the version 1 design baseline and implementation contracts.
+This repository contains the completed synthetic-data experimental MVP and its version 1 design baseline.
 
 ## Start here
 
@@ -11,6 +11,7 @@ This repository currently contains the version 1 design baseline and implementat
 - [Cryptographic protocol](docs/cyber-cipher/03_CRYPTOGRAPHIC_PROTOCOL.md)
 - [Implementation roadmap](docs/cyber-cipher/07_IMPLEMENTATION_ROADMAP.md)
 - [Security acceptance plan](docs/cyber-cipher/08_SECURITY_AND_ACCEPTANCE_TEST_PLAN.md)
+- [MVP deployment and acceptance runbook](docs/cyber-cipher/11_MVP_DEPLOYMENT_AND_ACCEPTANCE.md)
 - [Deliverable 4: comparative verifiability report](docs/cyber-cipher/DELIVERABLE_4_VERIFIABILITY_REPORT.md)
 - [Consolidated PDF](deliverables/Cyber_Cipher_Design_Baseline_v1.pdf)
 - [Downloadable specification ZIP](deliverables/Cyber_Cipher_Specification_Package_v1.zip)
@@ -36,9 +37,10 @@ The prototype uses Semaphore-style Merkle membership. A custom zero-knowledge RS
 
 ## Current status
 
-Design baseline complete. The TypeScript Phase 1 protocol core and the first
-tenant-isolated identity persistence slice are implemented; cross-language
-conformance and dedicated continuous fuzzing remain before the Phase 1 exit gate.
+The synthetic-data experimental MVP is complete through Phase 8 and includes a
+tenant-fixed local/SaaS demo runtime with separate trust-zone database routes.
+Run `pnpm acceptance:mvp` for the automated release suite, or follow the
+[deployment runbook](docs/cyber-cipher/11_MVP_DEPLOYMENT_AND_ACCEPTANCE.md).
 
 Implemented so far:
 

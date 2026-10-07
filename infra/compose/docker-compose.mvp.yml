@@ -1,0 +1,104 @@
+name: cyber-cipher-mvp
+
+x-database-common: &database-common
+  image: postgres:17.6-alpine
+  restart: unless-stopped
+  environment:
+    POSTGRES_USER: cyber_cipher
+    POSTGRES_PASSWORD: ${MVP_DB_PASSWORD:?Set MVP_DB_PASSWORD in .env.mvp}
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U cyber_cipher -d $$POSTGRES_DB"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  identity-db:
+    <<: *database-common
+    environment:
+      POSTGRES_DB: identity_zone
+      POSTGRES_USER: cyber_cipher
+      POSTGRES_PASSWORD: ${MVP_DB_PASSWORD:?Set MVP_DB_PASSWORD in .env.mvp}
+    volumes:
+      - identity-data:/var/lib/postgresql/data
+    networks: [identity-zone]
+
+  complaint-db:
+    <<: *database-common
+    environment:
+      POSTGRES_DB: complaint_zone
+      POSTGRES_USER: cyber_cipher
+      POSTGRES_PASSWORD: ${MVP_DB_PASSWORD:?Set MVP_DB_PASSWORD in .env.mvp}
+    volumes:
+      - complaint-data:/var/lib/postgresql/data
+    networks: [complaint-zone]
+
+  handler-db:
+    <<: *database-common
+    environment:
+      POSTGRES_DB: handler_zone
+      POSTGRES_USER: cyber_cipher
+      POSTGRES_PASSWORD: ${MVP_DB_PASSWORD:?Set MVP_DB_PASSWORD in .env.mvp}
+    volumes:
+      - handler-data:/var/lib/postgresql/data
+    networks: [handler-zone]
+
+  public-db:
+    <<: *database-common
+    environment:
+      POSTGRES_DB: public_zone
+      POSTGRES_USER: cyber_cipher
+      POSTGRES_PASSWORD: ${MVP_DB_PASSWORD:?Set MVP_DB_PASSWORD in .env.mvp}
+    volumes:
+      - public-data:/var/lib/postgresql/data
+    networks: [public-zone]
+
+  mvp-runtime:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mvp
+    restart: unless-stopped
+    depends_on:
+      identity-db: { condition: service_healthy }
+      complaint-db: { condition: service_healthy }
+      handler-db: { condition: service_healthy }
+      public-db: { condition: service_healthy }
+    environment:
+      MVP_DEPLOYMENT_MODE: development
+      MVP_DATA_CLASSIFICATION: synthetic
+      MVP_TENANT_ID: ${MVP_TENANT_ID:?Set MVP_TENANT_ID in .env.mvp}
+      MVP_TENANT_SLUG: ${MVP_TENANT_SLUG:?Set MVP_TENANT_SLUG in .env.mvp}
+      MVP_PUBLIC_ORIGIN: ${MVP_PUBLIC_ORIGIN:-http://127.0.0.1:8080}
+      MVP_PORT: 8080
+      MVP_IDENTITY_DATABASE_URL: postgresql://cyber_cipher:${MVP_DB_PASSWORD}@identity-db/identity_zone
+      MVP_COMPLAINT_DATABASE_URL: postgresql://cyber_cipher:${MVP_DB_PASSWORD}@complaint-db/complaint_zone
+      MVP_HANDLER_DATABASE_URL: postgresql://cyber_cipher:${MVP_DB_PASSWORD}@handler-db/handler_zone
+      MVP_PUBLIC_DATABASE_URL: postgresql://cyber_cipher:${MVP_DB_PASSWORD}@public-db/public_zone
+    ports:
+      - "127.0.0.1:${MVP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    networks: [identity-zone, complaint-zone, handler-zone, public-zone]
+
+networks:
+  identity-zone: { internal: true }
+  complaint-zone: { internal: true }
+  handler-zone: { internal: true }
+  public-zone: { internal: true }
+
+volumes:
+  identity-data:
+  complaint-data:
+  handler-data:
+  public-data:

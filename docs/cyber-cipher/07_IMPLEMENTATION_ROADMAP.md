@@ -226,7 +226,7 @@ Do not start public UI polishing before these iterations pass their security tes
 
 A feature is complete only when its protocol/schema is versioned, positive and negative tests exist, privacy-forbidden fields are tested, logs contain no sensitive values, failure is atomic, documentation matches behavior, and the acceptance matrix traces it to an SRS requirement.
 
-## 15. Current MVP build status (2026-10-06)
+## 15. Current MVP build status (2026-10-07)
 
 The TypeScript protocol core, in-memory membership/recovery model, tenant-bound
 PostgreSQL enrollment and recovery transactions, durable 30-second signed
@@ -271,10 +271,14 @@ ciphertext storage. PostgreSQL integration tests exercise success, replay,
 conflict, and rollback under the CI database. Production still requires an
 external cryptographic/security review and a managed object-store adapter.
 
-One major implementation step remains for the experimental MVP:
-
-1. Integrate the prototype clients, deploy the local/SaaS demo stack, and complete
-   the MVP security and acceptance suite.
+The experimental MVP implementation is complete. The tenant-fixed runtime adds
+safe liveness/readiness and public configuration, rejects non-synthetic data,
+opens separate identity, complaint, handler, and public database pools, and does
+not permit request-selected tenant routing. A hardened local Compose profile uses
+four persistent PostgreSQL trust zones on internal networks and exposes only the
+runtime on loopback. The deployment-policy validator and full workspace suite are
+the reproducible automated MVP acceptance command. See
+`11_MVP_DEPLOYMENT_AND_ACCEPTANCE.md` for the exact scope and runbook.
 
 Phase 9 external review and controlled-pilot hardening remains mandatory before
 any real-user or production deployment and is not counted as part of the
