@@ -1,0 +1,24 @@
+FROM node:24-bookworm-slim AS build
+
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+WORKDIR /workspace
+COPY package.json ./
+RUN npm install --ignore-scripts --no-audit --no-fund
+COPY tsconfig.docker.json ./tsconfig.json
+COPY src ./src
+COPY public ./public
+RUN ./node_modules/.bin/tsc -p tsconfig.json
+
+FROM node:24-bookworm-slim AS runtime
+
+ENV NODE_ENV=production
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+WORKDIR /workspace
+COPY package.json ./
+RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund \
+    && npm cache clean --force
+COPY --from=build --chown=node:node /workspace/dist ./dist
+COPY --from=build --chown=node:node /workspace/public ./public
+USER node
+EXPOSE 8080
+CMD ["node", "dist/src/main.js"]

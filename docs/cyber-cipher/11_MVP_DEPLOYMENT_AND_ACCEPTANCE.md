@@ -25,7 +25,7 @@ The Compose profile exposes only the runtime on loopback. Identity, complaint, h
 
 ## 3. SaaS adaptation
 
-For a hosted synthetic demonstration, build `infra/docker/Dockerfile.mvp`, terminate TLS in front of the runtime, inject the four database URLs and other `MVP_*` settings from a secret manager, and use a separate stack per tenant. Production mode rejects non-HTTPS public origins and PostgreSQL URLs without `sslmode=require`.
+For a hosted synthetic demonstration, build `apps/mvp-demo/Dockerfile.mvp`, terminate TLS in front of the runtime, inject the four database URLs and other `MVP_*` settings from a secret manager, and use a separate stack per tenant. Production mode rejects non-HTTPS public origins and PostgreSQL URLs without `sslmode=require`.
 
 The demo runtime is deliberately not a reverse proxy between the identified IdA and anonymous complaint service. Those trust zones retain separate ingress, credentials, telemetry, and deployment identities in a real environment.
 

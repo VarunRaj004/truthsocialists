@@ -57,8 +57,8 @@ services:
 
   mvp-runtime:
     build:
-      context: ../..
-      dockerfile: infra/docker/Dockerfile.mvp
+      context: ../../apps/mvp-demo
+      dockerfile: Dockerfile.mvp
     restart: unless-stopped
     depends_on:
       identity-db: { condition: service_healthy }
