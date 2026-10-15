@@ -89,9 +89,10 @@ services:
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
-    networks: [identity-zone, complaint-zone, handler-zone, public-zone]
+    networks: [edge, identity-zone, complaint-zone, handler-zone, public-zone]
 
 networks:
+  edge: {}
   identity-zone: { internal: true }
   complaint-zone: { internal: true }
   handler-zone: { internal: true }

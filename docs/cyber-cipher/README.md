@@ -22,6 +22,7 @@ This directory is the implementation baseline for Cyber Cipher, an unlinkable, e
 10. [SaaS tenancy profile](09_SAAS_TENANCY.md)
 11. [Phase 4 operator checklist](10_PHASE4_OPERATOR_CHECKLIST.md)
 12. [Experimental MVP deployment and acceptance](11_MVP_DEPLOYMENT_AND_ACCEPTANCE.md)
+13. [Guided system demonstration](12_GUIDED_DEMO.md)
 
 Machine-readable supporting artifacts are under `schemas/`, `api/`, `database/`, and `test-vectors/`.
 

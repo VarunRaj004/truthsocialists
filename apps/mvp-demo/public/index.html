@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Cyber Cipher · Secure complaint demonstration</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#submit" aria-label="Cyber Cipher home">
+      <span class="brand-mark" aria-hidden="true">CC</span>
+      <span><strong>Cyber Cipher</strong><small>Privacy-preserving complaints</small></span>
+    </a>
+    <div class="tenant"><span class="status-dot"></span><span id="tenant-label">demo-university</span><b>Synthetic</b></div>
+  </header>
+
+  <div class="notice" role="note">
+    <strong>Presentation mode</strong>
+    <span>This interface uses synthetic state and real HTTP routes. Do not enter personal or real complaint data.</span>
+  </div>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Anonymous · Accountable · Verifiable</p>
+        <h1>Report safely. Verify independently.</h1>
+        <p>Follow one synthetic complaint from encrypted submission to handler review, community oversight, and an auditable outcome.</p>
+      </div>
+      <div class="trust-card">
+        <span>System readiness</span>
+        <strong id="system-readiness">Checking…</strong>
+        <small id="zone-readiness">Verifying four isolated trust zones</small>
+      </div>
+    </section>
+
+    <nav class="steps" aria-label="Demonstration stages">
+      <button class="step active" data-view="submit"><span>1</span> Submit</button>
+      <button class="step" data-view="receipt"><span>2</span> Receipt</button>
+      <button class="step" data-view="handler"><span>3</span> Handle</button>
+      <button class="step" data-view="community"><span>4</span> Review</button>
+      <button class="step" data-view="audit"><span>5</span> Audit</button>
+    </nav>
+
+    <section class="workspace">
+      <aside class="privacy-panel">
+        <p class="eyebrow">Privacy boundary</p>
+        <h2>What the complaint service receives</h2>
+        <ul>
+          <li><i class="good">✓</i> Encrypted complaint bytes</li>
+          <li><i class="good">✓</i> One-use anonymous entitlement</li>
+          <li><i class="good">✓</i> Current membership proof</li>
+          <li><i class="bad">×</i> No NIC or account identifier</li>
+          <li><i class="bad">×</i> No membership tree position</li>
+        </ul>
+        <div class="protocol-note">
+          <strong>Protocol profile</strong>
+          <span>RSA-3072 blind entitlement</span>
+          <span>Groth16 / BN254 membership</span>
+          <span>AES-256-GCM payload</span>
+        </div>
+      </aside>
+
+      <div class="screen">
+        <section class="view active" id="view-submit" aria-labelledby="submit-title">
+          <div class="screen-heading">
+            <div><p class="eyebrow">Complainant device</p><h2 id="submit-title">Submit an encrypted complaint</h2></div>
+            <span class="pill private">Private</span>
+          </div>
+          <div class="privacy-strip"><strong>Eligibility verified separately</strong><span>Current root</span><span>Entitlement ready</span><span>60-second proof lease</span></div>
+          <form id="complaint-form">
+            <label>Matter<select id="matter" required><option value="Student services response">Student services response</option><option value="Assessment process">Assessment process</option><option value="Campus facilities">Campus facilities</option></select></label>
+            <label>Complaint summary<textarea id="summary" minlength="12" maxlength="800" required>A synthetic service request was not processed within the published time limit.</textarea><small>Use fictional information only. The demonstration records only ciphertext metadata.</small></label>
+            <label>Evidence files<select id="evidence"><option value="0">No files</option><option value="1">1 synthetic file</option><option value="2" selected>2 synthetic files</option><option value="3">3 synthetic files</option></select></label>
+            <div class="action-row"><button class="primary" type="submit">Encrypt and submit</button><span id="submit-status" class="action-status"></span></div>
+          </form>
+        </section>
+
+        <section class="view" id="view-receipt" aria-labelledby="receipt-title">
+          <div class="screen-heading"><div><p class="eyebrow">Individual verifiability</p><h2 id="receipt-title">Submission receipt</h2></div><span class="pill verified">Verified</span></div>
+          <div class="success-mark" aria-hidden="true">✓</div>
+          <h3 class="center">Complaint accepted</h3>
+          <p class="center muted">The receipt contains no account identity or complaint plaintext.</p>
+          <dl class="receipt-grid">
+            <dt>Receipt ID</dt><dd id="receipt-id">Submit a complaint first</dd>
+            <dt>Complaint</dt><dd id="receipt-complaint">—</dd>
+            <dt>Transparency log</dt><dd id="receipt-log">—</dd>
+            <dt>Ciphertext</dt><dd id="receipt-ciphertext">—</dd>
+            <dt>Submitted</dt><dd id="receipt-time">—</dd>
+          </dl>
+          <div class="action-row centered"><button class="secondary" id="verify-receipt" type="button">Verify receipt again</button><span id="receipt-status" class="action-status"></span></div>
+        </section>
+
+        <section class="view" id="view-handler" aria-labelledby="handler-title">
+          <div class="screen-heading"><div><p class="eyebrow">Authorized staff workspace</p><h2 id="handler-title">Assigned-handler review</h2></div><span class="pill role">WebAuthn</span></div>
+          <div id="handler-empty" class="empty-state">Submit a complaint to create an assigned case.</div>
+          <div id="handler-case" hidden>
+            <div class="case-header"><div><span>Assigned case</span><strong id="handler-case-id">—</strong></div><span class="pill verified">Access allowed</span></div>
+            <div class="evidence-card"><strong>Organization key unwrapped</strong><p>Evidence hash verified · anonymous mailbox available · every read recorded as a signed access event.</p></div>
+            <fieldset><legend>Record append-only finding</legend><div class="choice-row"><button class="decision positive" data-decision="SUBSTANTIATED" type="button">Substantiated</button><button class="decision neutral" data-decision="UNSUBSTANTIATED" type="button">Unsubstantiated</button></div></fieldset>
+            <div class="review-box"><div><strong>Independent publication review</strong><p id="redaction-preview">A redacted derivative appears after the handler decision.</p></div><div class="choice-row"><button class="secondary" id="approve-publication" type="button">Approve derivative</button><button class="ghost" id="reject-publication" type="button">Keep private</button></div></div>
+            <p id="handler-status" class="action-status"></p>
+          </div>
+        </section>
+
+        <section class="view" id="view-community" aria-labelledby="community-title">
+          <div class="screen-heading"><div><p class="eyebrow">Approved public derivative</p><h2 id="community-title">Community verification</h2></div><span class="pill public">Public</span></div>
+          <div id="community-empty" class="empty-state">The independent reviewer must approve a redacted derivative before publication.</div>
+          <div id="community-case" hidden>
+            <div class="public-statement"><span id="community-case-id">—</span><h3>Redacted public statement</h3><p id="public-statement">—</p></div>
+            <div class="vote-layout"><div><p class="eyebrow">Anonymous member action</p><h3>Does the public information support the complaint?</h3><p class="muted">Each click represents a different synthetic member with a unique complaint-scoped nullifier.</p><div class="choice-row"><button class="decision positive" data-vote="SUPPORT" type="button">Support</button><button class="decision neutral" data-vote="OPPOSE" type="button">Oppose</button></div></div><div class="score"><div><strong id="support-count">0</strong><span>Support</span></div><div><strong id="oppose-count">0</strong><span>Oppose</span></div><small id="quorum-label">3 votes required</small></div></div>
+            <p id="vote-status" class="action-status"></p>
+          </div>
+        </section>
+
+        <section class="view" id="view-audit" aria-labelledby="audit-title">
+          <div class="screen-heading"><div><p class="eyebrow">Independent oversight</p><h2 id="audit-title">Auditor comparison</h2></div><span class="pill role">Signed action</span></div>
+          <div id="audit-empty" class="empty-state">Complete handler review and reach community quorum before comparison.</div>
+          <div id="audit-case" hidden>
+            <div class="comparison"><div><span>Handler finding</span><strong id="audit-handler">—</strong></div><div class="versus">↔</div><div><span>Community result</span><strong id="audit-community">—</strong></div></div>
+            <div class="audit-result pending" id="audit-result"><span>Outcome</span><strong id="audit-outcome">Pending comparison</strong><p id="audit-explanation">The auditor independently compares the handler outcome with the public vote.</p></div>
+            <div class="action-row"><button class="primary" id="record-audit" type="button">Record signed comparison</button><button class="ghost" id="reset-demo" type="button">Reset demonstration</button></div>
+            <p id="audit-event" class="event-id"></p>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>Cyber Cipher experimental MVP</span><span>Protocol: cyber-cipher-v1 · Synthetic data only</span></footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>

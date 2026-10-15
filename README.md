@@ -12,6 +12,7 @@ This repository contains the completed synthetic-data experimental MVP and its v
 - [Implementation roadmap](docs/cyber-cipher/07_IMPLEMENTATION_ROADMAP.md)
 - [Security acceptance plan](docs/cyber-cipher/08_SECURITY_AND_ACCEPTANCE_TEST_PLAN.md)
 - [MVP deployment and acceptance runbook](docs/cyber-cipher/11_MVP_DEPLOYMENT_AND_ACCEPTANCE.md)
+- [Guided system demonstration](docs/cyber-cipher/12_GUIDED_DEMO.md)
 - [Deliverable 4: comparative verifiability report](docs/cyber-cipher/DELIVERABLE_4_VERIFIABILITY_REPORT.md)
 - [Consolidated PDF](deliverables/Cyber_Cipher_Design_Baseline_v1.pdf)
 - [Downloadable specification ZIP](deliverables/Cyber_Cipher_Specification_Package_v1.zip)

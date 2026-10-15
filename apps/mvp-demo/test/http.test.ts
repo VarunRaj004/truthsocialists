@@ -66,3 +66,61 @@ test("does not accept a request-selected tenant", async () => {
     assert.equal(body.tenantId, runtime.tenantId);
   });
 });
+
+test("serves the synthetic presentation interface with restrictive browser headers", async () => {
+  await withServer(async () => undefined, async (origin) => {
+    const page = await fetch(`${origin}/`);
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get("content-type") ?? "", /text\/html/);
+    assert.match(page.headers.get("content-security-policy") ?? "", /default-src 'self'/);
+    const html = await page.text();
+    assert.match(html, /Synthetic presentation mode|Presentation mode/);
+    assert.match(html, /Submit an encrypted complaint/);
+
+    const script = await fetch(`${origin}/assets/app.js`);
+    assert.equal(script.status, 200);
+    assert.match(script.headers.get("content-type") ?? "", /javascript/);
+  });
+});
+
+test("runs the synthetic complaint-to-auditor presentation workflow", async () => {
+  await withServer(async () => undefined, async (origin) => {
+    async function post(path: string, body?: unknown): Promise<Response> {
+      return fetch(`${origin}${path}`, {
+        method: "POST",
+        ...(body === undefined ? {} : {
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+      });
+    }
+
+    const submitted = await post("/demo/v1/complaints", {
+      matter: "Synthetic student service",
+      summary: "A fictional request was not processed within the demonstration time limit.",
+      evidenceCount: 2,
+    });
+    assert.equal(submitted.status, 201);
+    const submittedState = await submitted.json() as { activeCase: { receiptId: string; handlerOutcome: string } };
+    assert.equal(submittedState.activeCase.receiptId.length, 32);
+    assert.equal(submittedState.activeCase.handlerOutcome, "PENDING");
+
+    const decision = await post("/demo/v1/handler-decision", { outcome: "UNSUBSTANTIATED" });
+    assert.equal(decision.status, 200);
+    const reviewed = await post("/demo/v1/publication-review", { approve: true });
+    assert.equal(reviewed.status, 200);
+
+    for (let index = 0; index < 3; index += 1) {
+      const vote = await post("/demo/v1/votes", { choice: "SUPPORT" });
+      assert.equal(vote.status, 200);
+    }
+    const audit = await post("/demo/v1/audit");
+    assert.equal(audit.status, 200);
+    const finalState = await audit.json() as { activeCase: { auditOutcome: string; auditEventId: string } };
+    assert.equal(finalState.activeCase.auditOutcome, "CONFLICTING");
+    assert.match(finalState.activeCase.auditEventId, /^[0-9a-f-]{36}$/);
+
+    const duplicateDecision = await post("/demo/v1/handler-decision", { outcome: "SUBSTANTIATED" });
+    assert.equal(duplicateDecision.status, 409);
+  });
+});

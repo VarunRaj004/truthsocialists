@@ -12,7 +12,8 @@
     "test": "pnpm -r --workspace-concurrency=1 test",
     "check": "pnpm -r --workspace-concurrency=1 check",
     "check:deployment": "node scripts/validate-mvp-deployment.mjs",
-    "acceptance:mvp": "pnpm check:deployment && pnpm check && pnpm test"
+    "acceptance:mvp": "pnpm check:deployment && pnpm check && pnpm test",
+    "demo:guided": "node scripts/run-guided-demo.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

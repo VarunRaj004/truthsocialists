@@ -1,0 +1,38 @@
+# Git and editor metadata
+.git
+.github
+.idea
+.vscode
+
+# Host dependencies and generated build outputs. pnpm creates Windows
+# junctions inside node_modules that must not enter the Docker build context.
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/*.tsbuildinfo
+
+# Local reports, caches, and test artifacts
+.docker-test
+tmp
+deliverables
+
+# Local configuration and secrets are injected by Compose, never copied.
+.env
+.env.*
+**/.env
+**/.env.*
+secrets
+**/secrets
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.pk8
+
+# Runtime data
+postgres-data
+object-store-data
+*.db
+*.sqlite
